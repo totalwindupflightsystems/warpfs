@@ -1,12 +1,12 @@
 # WarpFS — Phase 1 Coding Tasks
 
-## [ ] warpfs-core — Manifest parsing and config types
-- **Priority:** P0 (blocking)
+## [x] warpfs-core — Manifest parsing and config types
+- **Priority:** P0 (blocking) ✅ COMPLETE 2026-06-20
 - **Model:** glm-5.2
 - **Crate:** warpfs-core
-- **Files:** warpfs-core/src/lib.rs, warpfs-core/src/manifest.rs, warpfs-core/src/config.rs
-- **Tests:** warpfs-core/tests/
-- **AC:** Parse .vfs/manifest.yaml into typed Rust structs. All sections (project, interfaces, repos, backends, metadata, graph, permissions, triggers, rules, plugins, discovery, sandbox, performance) parse without error. Unknown keys rejected. Default values applied for optional fields.
+- **Files:** warpfs-core/src/lib.rs (2L), warpfs-core/src/manifest.rs (910L), warpfs-core/src/config.rs (17L)
+- **Tests:** warpfs-core/tests/manifest_test.rs (519L) — 10/10 pass
+- **AC:** ✅ Parse .vfs/manifest.yaml into typed Rust structs. All 13 sections (project, interfaces, repos, backends, metadata, graph, permissions, triggers, rules, plugins, discovery, sandbox, performance) parse without error. Unknown keys rejected. Default values applied for optional fields. Custom deserializers for string_or_int (permission modes) and string_or_vec (trigger on field). Rust keyword handling via serde rename (ref→git_ref, async→r#async).
 
 ## [ ] warpfs-metadata — xattr read/write and inventory file I/O
 - **Priority:** P0 (blocking)
