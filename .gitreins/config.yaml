@@ -1,0 +1,25 @@
+# Rust project — language-specific guards not applicable
+# Tier 1: secrets only (gitleaks). cargo build/test run via cron verify step.
+guards:
+  secrets: true
+  lint: false
+  tests: false
+  test_mode: full
+  test_command: cargo test
+
+# Tier 2: LLM evaluator for autonomous coding loop
+evaluator:
+  max_iterations: 25
+  max_time: "10m"
+  max_input_tokens: "0.2M"
+  max_output_tokens: "0.05M"
+  tool_call_weight: 0.1
+
+defaults:
+  model: deepseek-v4-flash
+  check_for_updates: true
+
+history:
+  enabled: true
+  storage: git
+  max_verdicts: 1000

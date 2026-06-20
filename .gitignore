@@ -1,0 +1,6 @@
+# GitReins local state
+.gitreins/tasks.yaml
+.gitreins/history/
+
+# Rust build
+target/
