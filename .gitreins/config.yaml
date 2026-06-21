@@ -1,24 +1,18 @@
-# Rust project — WarpFS
-# Tier 1: secrets + full cargo test on every commit
 guards:
   secrets: true
-  lint: false           # Python-only (ruff). For Rust lint, see warpfs-foreman cron verify.
-  tests: true           # Run cargo test on pre-commit
-  test_mode: full       # "diff" is Python/pytest only — not applicable to Rust
+  lint: false
+  tests: true
+  test_mode: full
   test_command: cargo test
-
-# Tier 2: LLM evaluator for autonomous coding loop
 evaluator:
-  max_iterations: 50          # bumped from 25 for thorough Rust review
+  max_iterations: 50
   max_time: "10m"
-  max_input_tokens: "0.2M"
-  max_output_tokens: "0.05M"
+  max_input_tokens: "-1"
+  max_output_tokens: "0.5M"
   tool_call_weight: 0.1
-
 defaults:
-  model: deepseek-v4-flash
+  model: deepseek-v4-pro
   check_for_updates: true
-
 history:
   enabled: true
   storage: git
