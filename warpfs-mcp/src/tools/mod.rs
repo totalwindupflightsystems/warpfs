@@ -1,9 +1,12 @@
 //! Tool definitions and dispatch for the WarpFS MCP server.
 //!
-//! Three tools are exposed:
+//! Five tools are exposed:
 //! - `vfs_get_metadata`   — read WarpFS xattrs for a file
 //! - `vfs_graph_related`  — find related files via the dependency graph
 //! - `vfs_graph_stats`    — summary statistics about the graph
+//! - `vfs_graph_impact`   — transitive impact analysis for a file
+//! - `vfs_rule_list`      — list all rules defined in the manifest
+//! - `vfs_rule_check`     — execute a named rule query against the graph
 
 use std::path::Path;
 
@@ -61,21 +64,43 @@ pub fn list_tools() -> Vec<Tool> {
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {}
-                }),
-                },
-                Tool {
-                name: "vfs_graph_impact".into(),
-                description: "Find all files that depend on the given file, directly or transitively.".into(),
-                input_schema: serde_json::json!({
+            }),
+        },
+        Tool {
+            name: "vfs_graph_impact".into(),
+            description: "Find all files that depend on the given file, directly or transitively.".into(),
+            input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "path": {"type": "string", "description": "File path to compute impact for"},
                     "max_depth": {"type": "integer", "description": "Maximum traversal depth (default: 5)"}
                 },
                 "required": ["path"]
-                }),
+            }),
+        },
+        Tool {
+            name: "vfs_rule_list".into(),
+            description: "List all rules defined in the WarpFS manifest (stale-files, untested-critical, transitive-impact, etc.).".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {}
+            }),
+        },
+        Tool {
+            name: "vfs_rule_check".into(),
+            description: "Execute a named rule query against the dependency graph and return matching files.".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of the rule to execute (e.g., 'stale-files')"
+                    }
                 },
-                ]
+                "required": ["name"]
+            }),
+        },
+    ]
 }
 
 // ---------------------------------------------------------------------------
@@ -92,6 +117,8 @@ pub fn call_tool(name: &str, arguments: &serde_json::Value) -> McpResult<serde_j
         "vfs_graph_related" => graph_related(arguments),
         "vfs_graph_stats" => graph_stats(arguments),
         "vfs_graph_impact" => graph_impact(arguments),
+        "vfs_rule_list" => rule_list(arguments),
+        "vfs_rule_check" => rule_check(arguments),
         other => Err(McpError::Protocol(format!("Unknown tool: {other}"))),
     }
 }
@@ -102,6 +129,12 @@ pub fn call_tool(name: &str, arguments: &serde_json::Value) -> McpResult<serde_j
 
 /// Default path to the DuckDB graph database (relative to CWD).
 const GRAPH_DB_PATH: &str = ".vfs/graph/graph.duckdb";
+
+/// Default path to the manifest file (relative to CWD).
+const MANIFEST_PATH: &str = "manifest.yaml";
+
+/// Fallback manifest path used when the primary path doesn't exist.
+const MANIFEST_FALLBACK_PATH: &str = ".vfs/manifest.yaml";
 
 /// `vfs_get_metadata` — read all `user.vfs.*` xattrs for a file.
 ///
@@ -219,4 +252,112 @@ fn graph_impact(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
         "total": results.len(),
         "max_depth_reached": false
     }))
+}
+
+// ---------------------------------------------------------------------------
+// Rule tools
+// ---------------------------------------------------------------------------
+
+/// Load the manifest from the primary or fallback path.
+fn load_manifest() -> McpResult<warpfs_core::manifest::Manifest> {
+    let primary = Path::new(MANIFEST_PATH);
+    let fallback = Path::new(MANIFEST_FALLBACK_PATH);
+
+    let path = if primary.exists() {
+        primary
+    } else if fallback.exists() {
+        fallback
+    } else {
+        return Err(McpError::Protocol(
+            "No manifest found. Create a manifest.yaml or .vfs/manifest.yaml file.".into(),
+        ));
+    };
+
+    let path_str = path.to_str().unwrap_or(MANIFEST_PATH);
+    warpfs_core::manifest::Manifest::from_file(path_str).map_err(|e| {
+        McpError::Protocol(format!("Failed to load manifest: {e}"))
+    })
+}
+
+/// `vfs_rule_list` — return all rules defined in the manifest.
+///
+/// Each rule includes its name, description, and SQL query.
+fn rule_list(_arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
+    let manifest = load_manifest()?;
+    let rules: Vec<serde_json::Value> = manifest
+        .rules
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "name": r.name,
+                "description": r.description,
+                "query": r.query,
+            })
+        })
+        .collect();
+    Ok(serde_json::json!({ "rules": rules, "total": rules.len() }))
+}
+
+/// `vfs_rule_check` — execute a named rule query against the graph.
+///
+/// Returns matching rows.  If the rule's SQL is invalid the error is
+/// returned as a structured JSON object (never a panic).
+fn rule_check(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
+    let rule_name = arguments["name"]
+        .as_str()
+        .ok_or_else(|| McpError::Protocol("missing 'name' argument".into()))?;
+
+    let manifest = load_manifest()?;
+
+    let query_rule = manifest
+        .rules
+        .iter()
+        .find(|r| r.name == rule_name)
+        .ok_or_else(|| {
+            McpError::Protocol(format!(
+                "Rule '{rule_name}' not found in manifest. Available: {}",
+                manifest
+                    .rules
+                    .iter()
+                    .map(|r| r.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
+        })?;
+
+    // Build the engine-compatible rule.
+    let rule = warpfs_graph::Rule {
+        name: query_rule.name.clone(),
+        description: query_rule.description.clone(),
+        query: query_rule.query.clone(),
+    };
+
+    // Open the graph database.  If it doesn't exist, return empty results
+    // rather than an error — the graph just hasn't been populated yet.
+    if !Path::new(GRAPH_DB_PATH).exists() {
+        return Ok(serde_json::json!({
+            "rule": rule.name,
+            "description": rule.description,
+            "matches": [],
+            "total": 0,
+        }));
+    }
+
+    let db = warpfs_graph::GraphDB::open(GRAPH_DB_PATH)?;
+
+    match warpfs_graph::RuleEngine::check(db.conn(), &rule) {
+        Ok(result) => Ok(serde_json::json!({
+            "rule": result.rule,
+            "description": result.description,
+            "matches": result.matches,
+            "total": result.total,
+        })),
+        Err(err) => {
+            // Return the error as structured JSON — never panic.
+            Ok(serde_json::json!({
+                "rule": err.rule,
+                "error": err.error,
+            }))
+        }
+    }
 }

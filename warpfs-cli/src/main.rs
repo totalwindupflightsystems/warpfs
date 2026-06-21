@@ -52,6 +52,10 @@ enum GraphCommand {
     Related(RelatedArgs),
     /// Find all files that transitively depend on a given file (impact analysis).
     Impact(ImpactArgs),
+    /// List all rules defined in the manifest.
+    RuleList,
+    /// Execute a named rule query against the dependency graph.
+    RuleCheck(RuleCheckArgs),
 }
 
 #[derive(clap::Args)]
@@ -79,6 +83,12 @@ struct ImpactArgs {
 }
 
 #[derive(clap::Args)]
+struct RuleCheckArgs {
+    /// Name of the rule to execute (e.g., "stale-files").
+    name: String,
+}
+
+#[derive(clap::Args)]
 struct ServeArgs {
     /// Run as an MCP server.
     #[arg(long)]
@@ -95,6 +105,8 @@ fn main() {
         Commands::Graph(GraphCommand::Stats) => graph::run_stats(),
         Commands::Graph(GraphCommand::Related(args)) => graph::run_related(&args.path, args.relation.as_deref()),
         Commands::Graph(GraphCommand::Impact(args)) => graph::run_impact(&args.path, args.max_depth, args.format.as_deref()),
+        Commands::Graph(GraphCommand::RuleList) => graph::run_rule_list(),
+        Commands::Graph(GraphCommand::RuleCheck(args)) => graph::run_rule_check(&args.name),
         Commands::Serve(args) => serve::run(args.mcp),
     };
 

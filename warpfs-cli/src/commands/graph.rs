@@ -246,3 +246,90 @@ fn collect_source_files(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<(
     }
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Rule engine — manifest-driven SQL queries against the graph
+// ---------------------------------------------------------------------------
+
+/// Default manifest paths (relative to CWD).
+const MANIFEST_PATHS: &[&str] = &["manifest.yaml", ".vfs/manifest.yaml"];
+
+/// Load the manifest from the first available path.
+fn load_manifest() -> Result<warpfs_core::manifest::Manifest> {
+    for path in MANIFEST_PATHS {
+        if std::path::Path::new(path).exists() {
+            return Ok(warpfs_core::manifest::Manifest::from_file(path)?);
+        }
+    }
+    anyhow::bail!(
+        "No manifest found. Create a manifest.yaml or .vfs/manifest.yaml file with `warpfs init`."
+    );
+}
+
+/// `warpfs graph rule-list` — print all rules from the manifest.
+pub fn run_rule_list() -> Result<()> {
+    let manifest = load_manifest()?;
+
+    if manifest.rules.is_empty() {
+        println!("No rules defined in the manifest.");
+        return Ok(());
+    }
+
+    println!("Rules defined in manifest:");
+    for rule in &manifest.rules {
+        println!("  {} — {}", rule.name, rule.description);
+    }
+    Ok(())
+}
+
+/// `warpfs graph rule-check <name>` — execute a named rule against the graph.
+pub fn run_rule_check(name: &str) -> Result<()> {
+    let cwd = std::env::current_dir().context("failed to determine the current directory")?;
+    let graph_db = cwd.join(".vfs").join("graph").join("graph.db");
+
+    if !graph_db.exists() {
+        anyhow::bail!("No graph data. Run `warpfs graph discover` first.");
+    }
+
+    let manifest = load_manifest()?;
+
+    let query_rule = manifest
+        .rules
+        .iter()
+        .find(|r| r.name == name)
+        .ok_or_else(|| {
+            let available: Vec<&str> = manifest.rules.iter().map(|r| r.name.as_str()).collect();
+            anyhow::anyhow!(
+                "Rule '{}' not found in manifest. Available: {}",
+                name,
+                available.join(", ")
+            )
+        })?;
+
+    let rule = warpfs_graph::Rule {
+        name: query_rule.name.clone(),
+        description: query_rule.description.clone(),
+        query: query_rule.query.clone(),
+    };
+
+    let graph_db_str = graph_db.to_str().unwrap_or(".vfs/graph/graph.db");
+    let graph = GraphDB::open(graph_db_str).context("failed to open DuckDB graph database")?;
+
+    match warpfs_graph::RuleEngine::check(graph.conn(), &rule) {
+        Ok(result) => {
+            if result.matches.is_empty() {
+                println!("No matches for rule '{}'.", name);
+            } else {
+                println!("Rule '{}' — {} match(es):", name, result.total);
+                for row in &result.matches {
+                    println!("  {}", row.join(" | "));
+                }
+            }
+            Ok(())
+        }
+        Err(err) => {
+            // Return structured error — never panic.
+            anyhow::bail!("Rule '{}' failed: {}", err.rule, err.error);
+        }
+    }
+}

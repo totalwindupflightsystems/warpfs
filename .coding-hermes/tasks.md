@@ -31,7 +31,7 @@
 - **AC:** `cargo test -p warpfs_graph` — 3+ new tests for impact traversal (direct, transitive, circular)
 - **Result:** GLM 5.2 spawn → 6 files: impact.rs (74 lines, BFS with visited-set cycle protection), lib.rs (+impact module + re-exports + serde_json re-export), graph.rs (+conn() accessor), main.rs (+Impact subcommand + ImpactArgs), commands/graph.rs (+run_impact with text/JSON output), impact_test.rs (7 tests). Full workspace 69/69 pass. Build clean.
 
-## [ ] Phase 2: DuckDB rule engine — `vfs_rule_check` / `vfs_rule_list`
+## [x] Phase 2: DuckDB rule engine — `vfs_rule_check` / `vfs_rule_list`
 - **Priority:** high
 - **Model:** deepseek-v4-pro
 - **Files:** warpfs-graph/src/rules.rs (new), warpfs-mcp/src/server.rs, warpfs-cli/src/commands/graph.rs
@@ -41,6 +41,7 @@
 - **AC:** `warpfs graph rule-list` prints rule names and descriptions
 - **AC:** rules with invalid SQL return structured error, not panic
 - **Notes:** Rules defined in manifest.yaml §4. Scaffold: load manifest → extract rules[].query → execute via DuckDB → return results. Create warpfs-graph/src/rules.rs with RuleEngine struct.
+- **Result:** Implemented directly (foreman write). Created rules.rs with RuleEngine (dynamic column discovery, 6 tests), added vfs_rule_list/vfs_rule_check MCP tools, wired rule-list/rule-check CLI subcommands. Build clean, 75/75 tests pass, guard PASS.
 
 ## [ ] Phase 2: inotify trigger wiring — auto-discover on file write
 - **Priority:** medium

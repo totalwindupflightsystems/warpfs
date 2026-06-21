@@ -12,11 +12,13 @@ pub mod error;
 pub mod graph;
 pub mod impact;
 pub mod parser;
+pub mod rules;
 
 pub use error::{GraphError, GraphResult};
 pub use graph::GraphDB;
 pub use impact::{compute_impact, ImpactFile, ImpactResult};
 pub use parser::{Language, Parser};
+pub use rules::{Rule, RuleCheckResult, RuleEngine, RuleError};
 
 /// Re-export of the shared [`Edge`] type from `warpfs_metadata`.
 pub use warpfs_metadata::inventory::Edge;

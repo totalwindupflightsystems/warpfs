@@ -11,6 +11,7 @@ serde_json = "1"
 thiserror = "2"
 warpfs_metadata = { path = "../warpfs-metadata" }
 warpfs_graph = { path = "../warpfs-graph" }
+warpfs_core = { path = "../warpfs-core" }
 
 [dev-dependencies]
 tempfile = "3"
