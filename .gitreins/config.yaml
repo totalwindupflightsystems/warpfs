@@ -1,15 +1,15 @@
-# Rust project — language-specific guards not applicable
-# Tier 1: secrets only (gitleaks). cargo build/test run via cron verify step.
+# Rust project — WarpFS
+# Tier 1: secrets + full cargo test on every commit
 guards:
   secrets: true
-  lint: false
-  tests: false
-  test_mode: full
+  lint: false           # Python-only (ruff). For Rust lint, see warpfs-foreman cron verify.
+  tests: true           # Run cargo test on pre-commit
+  test_mode: full       # "diff" is Python/pytest only — not applicable to Rust
   test_command: cargo test
 
 # Tier 2: LLM evaluator for autonomous coding loop
 evaluator:
-  max_iterations: 25
+  max_iterations: 50          # bumped from 25 for thorough Rust review
   max_time: "10m"
   max_input_tokens: "0.2M"
   max_output_tokens: "0.05M"
