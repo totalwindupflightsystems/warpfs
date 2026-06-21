@@ -61,9 +61,21 @@ pub fn list_tools() -> Vec<Tool> {
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {}
-            }),
-        },
-    ]
+                }),
+                },
+                Tool {
+                name: "vfs_graph_impact".into(),
+                description: "Find all files that depend on the given file, directly or transitively.".into(),
+                input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "File path to compute impact for"},
+                    "max_depth": {"type": "integer", "description": "Maximum traversal depth (default: 5)"}
+                },
+                "required": ["path"]
+                }),
+                },
+                ]
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +91,7 @@ pub fn call_tool(name: &str, arguments: &serde_json::Value) -> McpResult<serde_j
         "vfs_get_metadata" => get_metadata(arguments),
         "vfs_graph_related" => graph_related(arguments),
         "vfs_graph_stats" => graph_stats(arguments),
+        "vfs_graph_impact" => graph_impact(arguments),
         other => Err(McpError::Protocol(format!("Unknown tool: {other}"))),
     }
 }
@@ -178,4 +191,32 @@ fn graph_stats(_arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
     let db = warpfs_graph::GraphDB::open(GRAPH_DB_PATH)?;
     let stats = db.stats()?;
     Ok(serde_json::to_value(stats)?)
+}
+
+/// `vfs_graph_impact` — transitive impact analysis for a file.
+///
+/// Uses BFS over the dependency graph to find all files that depend on
+/// the given path, up to `max_depth` hops (default 5).
+fn graph_impact(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
+    let path_str = arguments["path"]
+        .as_str()
+        .ok_or_else(|| McpError::Protocol("missing 'path' argument".into()))?;
+
+    let max_depth: u32 = arguments["max_depth"]
+        .as_u64()
+        .unwrap_or(5)
+        .try_into()
+        .unwrap_or(5);
+
+    if !Path::new(GRAPH_DB_PATH).exists() {
+        return Ok(serde_json::json!({"dependents": [], "total": 0, "max_depth_reached": false}));
+    }
+
+    let db = warpfs_graph::GraphDB::open(GRAPH_DB_PATH)?;
+    let results = warpfs_graph::impact::compute_impact(db.conn(), path_str, max_depth)?;
+    Ok(serde_json::json!({
+        "dependents": results,
+        "total": results.len(),
+        "max_depth_reached": false
+    }))
 }

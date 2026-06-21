@@ -88,27 +88,54 @@ pub fn append_edge(edges_jsonl: &Path, edge: &Edge) -> Result<(), MetadataError>
 /// Append multiple edges to `edges.jsonl` — all or nothing.
 ///
 /// Each edge becomes one JSONL line. The file is opened once and all lines
-/// are written in a single I/O operation.
+/// are written in a single I/O operation. Does NOT deduplicate — use
+/// `append_edges_deduped` if you need deduplication.
 pub fn append_edges(edges_jsonl: &Path, edges: &[Edge]) -> Result<(), MetadataError> {
-    // Ensure the parent directory exists.
     if let Some(parent) = edges_jsonl.parent() {
         fs::create_dir_all(parent)?;
     }
-
-    // Pre-serialize every edge so we can write atomically.
     let mut buf = Vec::with_capacity(edges.len() * 128);
     for edge in edges {
         serde_json::to_writer(&mut buf, edge)?;
         buf.push(b'\n');
     }
-
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(edges_jsonl)?;
-
+    let mut file = OpenOptions::new().create(true).append(true).open(edges_jsonl)?;
     file.write_all(&buf)?;
     Ok(())
+}
+
+/// Append only edges that don't already exist in the file.
+///
+/// Reads existing edges from the file, deduplicates by `(from, to, rel)`
+/// tuple, and appends only genuinely new edges. Returns the count of
+/// actually-appended edges (0 if all were duplicates).
+pub fn append_edges_deduped(edges_jsonl: &Path, edges: &[Edge]) -> Result<usize, MetadataError> {
+    // Read existing edges to build a dedup set.
+    let mut seen = std::collections::HashSet::new();
+    if edges_jsonl.exists() {
+        let contents = fs::read_to_string(edges_jsonl)?;
+        for line in contents.lines() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            if let Ok(edge) = serde_json::from_str::<Edge>(line) {
+                seen.insert((edge.from.clone(), edge.to.clone(), edge.rel.clone()));
+            }
+        }
+    }
+
+    // Filter to genuinely new edges.
+    let new_edges: Vec<&Edge> = edges
+        .iter()
+        .filter(|e| !seen.contains(&(e.from.clone(), e.to.clone(), e.rel.clone())))
+        .collect();
+
+    if new_edges.is_empty() {
+        return Ok(0);
+    }
+
+    append_edges(edges_jsonl, &new_edges.iter().map(|&e| e.clone()).collect::<Vec<_>>())?;
+    Ok(new_edges.len())
 }
 
 // ──────────────────────── Mounts YAML I/O ────────────────────────

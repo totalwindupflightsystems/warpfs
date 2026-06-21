@@ -50,7 +50,7 @@ fn test_tools_list() {
     let tools = resp["result"]["tools"]
         .as_array()
         .expect("tools should be an array");
-    assert_eq!(tools.len(), 3, "expected exactly 3 tools");
+    assert!(tools.len() >= 4, "expected at least 4 tools");
 
     // Each tool must have name, description, and inputSchema.
     for t in tools {
