@@ -1,0 +1,10 @@
+[package]
+name = "warpfs_fuse"
+version = "0.1.0"
+edition = "2021"
+description = "WarpFS FUSE daemon — kernel-level virtual filesystem with permission enforcement"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+fuser = "0.15"
+tokio = { version = "1", features = ["full"] }
