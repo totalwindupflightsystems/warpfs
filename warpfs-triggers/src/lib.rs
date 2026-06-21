@@ -10,9 +10,13 @@
 pub mod engine;
 pub mod debounce;
 
-use std::path::PathBuf;
+pub use engine::TriggerEngine;
+pub use debounce::Debouncer;
+
+pub use std::path::PathBuf;
 
 /// Trigger configuration from manifest.
+#[derive(Clone)]
 pub struct TriggerConfig {
     pub name: String,
     pub watch_pattern: String,
@@ -26,6 +30,7 @@ pub struct TriggerConfig {
     pub on_failure: Option<TriggerAction>,
 }
 
+#[derive(Clone)]
 pub enum TriggerAction {
     SetXattr { key: String, value_template: String },
     Warn,
@@ -33,14 +38,44 @@ pub enum TriggerAction {
 }
 
 /// A file event received from inotify.
+#[derive(Clone)]
 pub struct FileEvent {
     pub path: PathBuf,
     pub event_type: EventType,
     pub timestamp: u64,  // unix timestamp
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum EventType {
     Write,
     Delete,
     Create,
+}
+
+impl Default for TriggerConfig {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            watch_pattern: "*".to_string(),
+            events: vec!["write".to_string(), "delete".to_string()],
+            command: None,
+            builtin: None,
+            async_exec: true,
+            timeout_secs: 30,
+            debounce_ms: 500,
+            on_success: None,
+            on_failure: None,
+        }
+    }
+}
+
+/// Parse duration string to milliseconds: "500ms" -> 500, "2s" -> 2000, "30s" -> 30000
+pub fn parse_duration_ms(s: &str) -> u64 {
+    if let Some(n) = s.strip_suffix("ms") {
+        n.parse::<u64>().unwrap_or(0)
+    } else if let Some(n) = s.strip_suffix('s') {
+        n.parse::<u64>().unwrap_or(0) * 1000
+    } else {
+        s.parse::<u64>().unwrap_or(0)
+    }
 }

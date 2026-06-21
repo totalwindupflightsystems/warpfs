@@ -7,6 +7,7 @@
 pub mod daemon;
 pub mod permissions;
 pub mod ops;
+pub mod triggers;
 
 use std::path::PathBuf;
 

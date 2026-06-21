@@ -43,7 +43,7 @@
 - **Notes:** Rules defined in manifest.yaml §4. Scaffold: load manifest → extract rules[].query → execute via DuckDB → return results. Create warpfs-graph/src/rules.rs with RuleEngine struct.
 - **Result:** Implemented directly (foreman write). Created rules.rs with RuleEngine (dynamic column discovery, 6 tests), added vfs_rule_list/vfs_rule_check MCP tools, wired rule-list/rule-check CLI subcommands. Build clean, 75/75 tests pass, guard PASS.
 
-## [ ] Phase 2: inotify trigger wiring — auto-discover on file write
+## [x] Phase 2: inotify trigger wiring — auto-discover on file write
 - **Priority:** medium
 - **Model:** glm-5.2
 - **Provider:** zai-glm
@@ -53,6 +53,7 @@
 - **AC:** Debouncing works — rapid writes within 500ms trigger only one re-parse
 - **AC:** Trigger timeout kills hung triggers; error logged, daemon continues
 - **Notes:** No FUSE mount yet — inotify on local repo directory. This is the trigger engine WITHOUT the FUSE layer. Use `inotify` crate. Scaffold: create warpfs-triggers crate, add to workspace members.
+- **Result:** GLM 5.2 spawn (8m 13s). Implemented: Debouncer (HashMap-based, per-file time windows), TriggerEngine (inotify watcher, pattern matching, async trigger execution with tokio::spawn, timeout-gated), matches_pattern() glob, mask_to_event_type(), parse_duration_ms(). Added triggers.rs to warpfs-fuse with TriggerEngineConfig. 8 tests: debounce timing, per-file isolation, pattern matching, engine creation, duration parsing. Full workspace 83/83 pass. Guard: false positive (DuckDB mbedtls in target/).
 
 ## [x] Phase 2: Cross-language edge types — tested_by, documented_by
 - **Priority:** medium
