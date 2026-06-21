@@ -24,13 +24,13 @@
 - **Tests:** warpfs-graph/tests/parser_test.rs, warpfs-graph/tests/graph_test.rs — 10/10 pass (1 unit + 4 parser + 5 graph)
 - **AC:** ✅ Parse Go files with tree-sitter, extract imports (std:/pkg: classification). Generate edges.jsonl entries (from, to, rel). Initialize DuckDB graph.db. Query edges via DuckDB (COUNT, GROUP BY, DISTINCT). Extra: import block parsing, top_dependencies ranking.
 
-## [ ] warpfs-cli — CLI shim (init, meta, graph, serve)
+## [x] warpfs-cli — CLI shim (init, meta, graph, serve)
 - **Priority:** P1
 - **Model:** glm-5.2
 - **Crate:** warpfs-cli
 - **Files:** warpfs-cli/src/main.rs, warpfs-cli/src/commands/
 - **Tests:** tests/cli/
-- **AC:** `warpfs init` creates .vfs/ + default manifest.yaml. `warpfs meta <path>` reads xattrs. `warpfs graph discover` runs parser → edges.jsonl → DuckDB. `warpfs graph stats` prints hotspot/orphan counts. All commands return non-zero on error.
+- **AC:** ✅ `warpfs init` creates .vfs/ + default manifest.yaml. `warpfs meta <path>` reads xattrs. `warpfs graph discover` runs parser → edges.jsonl → DuckDB. `warpfs graph stats` prints hotspot/orphan counts. All commands return non-zero on error. **COMPLETE 2026-06-20** — GLM 5.2 spawn, 7 files (main.rs + 4 commands + mod.rs + test), 5/5 tests pass, full workspace 44/44 tests pass, smoke-tested all 4 subcommands.
 
 ## [ ] warpfs-mcp — MCP server (stdio transport, 3 tools)
 - **Priority:** P1

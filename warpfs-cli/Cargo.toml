@@ -1,0 +1,17 @@
+[package]
+name = "warpfs-cli"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "WarpFS CLI shim — init, meta, graph, serve"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+serde = "1"
+serde_yaml = "0.9"
+
+# Internal crates (package names use underscores; directories use hyphens)
+warpfs_core = { path = "../warpfs-core" }
+warpfs_metadata = { path = "../warpfs-metadata" }
+warpfs_graph = { path = "../warpfs-graph" }
