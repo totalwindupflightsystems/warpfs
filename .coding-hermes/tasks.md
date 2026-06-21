@@ -9,7 +9,7 @@
 - **AC:** setting on nonexistent file exits with clear error code and message, no panic
 - **Notes:** metadata crate has `set_xattr` function; wire it to CLI with clap args `--set` and `--value`
 
-## [ ] `warpfs graph related <path>` — query graph edges for a file
+## [x] `warpfs graph related <path>` — query graph edges for a file
 - **Priority:** high
 - **Model:** deepseek-v4-flash
 - **Files:** warpfs-cli/src/commands/graph.rs, warpfs-graph/src/graph.rs
@@ -17,6 +17,7 @@
 - **AC:** `warpfs graph related --relation imports src/main.rs` filters to only 'imports' edges
 - **AC:** `warpfs graph related nonexistent.rs` exits 1 with "not found in graph"
 - **Notes:** DuckDB query: `SELECT * FROM edges WHERE from = ?`; add subcommand with --relation filter
+- **Result:** Implemented directly. Added `GraphDB::related()` and `GraphDB::file_in_graph()` to warpfs-graph, wired `Related` subcommand with `--relation` filter to warpfs-cli. Build clean, 62/62 tests pass.
 
 ## [ ] Phase 2: `warpfs graph impact <path>` — transitive impact analysis
 - **Priority:** high

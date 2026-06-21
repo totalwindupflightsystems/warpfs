@@ -48,6 +48,18 @@ enum GraphCommand {
     Discover,
     /// Print summary statistics from the discovered dependency graph.
     Stats,
+    /// Query graph edges for a specific file.
+    Related(RelatedArgs),
+}
+
+#[derive(clap::Args)]
+struct RelatedArgs {
+    /// The file whose graph edges to query.
+    path: String,
+
+    /// Filter edges by relation type (e.g., "imports", "calls").
+    #[arg(long)]
+    relation: Option<String>,
 }
 
 #[derive(clap::Args)]
@@ -65,6 +77,7 @@ fn main() {
         Commands::Meta(args) => meta::run(&args.path, args.set.as_deref(), args.value.as_deref()),
         Commands::Graph(GraphCommand::Discover) => graph::run_discover(),
         Commands::Graph(GraphCommand::Stats) => graph::run_stats(),
+        Commands::Graph(GraphCommand::Related(args)) => graph::run_related(&args.path, args.relation.as_deref()),
         Commands::Serve(args) => serve::run(args.mcp),
     };
 

@@ -95,7 +95,55 @@ pub fn run_discover() -> Result<()> {
     Ok(())
 }
 
-/// Print summary statistics from the DuckDB graph database.
+/// Query all edges where `from = path`, optionally filtered by relation type.
+///
+/// Exits with code 1 and a "not found in graph" message when the path does not
+/// appear in the `edges` table at all (neither as `from` nor `to`).
+pub fn run_related(path: &str, relation: Option<&str>) -> Result<()> {
+    let cwd = std::env::current_dir().context("failed to determine the current directory")?;
+    let graph_db = cwd.join(".vfs").join("graph").join("graph.db");
+
+    if !graph_db.exists() {
+        anyhow::bail!("No graph data. Run `warpfs graph discover` first.");
+    }
+
+    let graph_db_str = graph_db.to_str().unwrap_or(".vfs/graph/graph.db");
+    let graph = GraphDB::open(graph_db_str).context("failed to open DuckDB graph database")?;
+
+    // Check whether the file exists in the graph at all.
+    if !graph
+        .file_in_graph(path)
+        .context("failed to query graph for file existence")?
+    {
+        anyhow::bail!("not found in graph");
+    }
+
+    let edges = graph
+        .related(path, relation)
+        .context("failed to query related edges")?;
+
+    if edges.is_empty() && relation.is_some() {
+        println!(
+            "No edges found for '{}' with relation filter '{}'.",
+            path,
+            relation.unwrap()
+        );
+        return Ok(());
+    }
+
+    // Print edges in a readable format.
+    if edges.is_empty() {
+        println!("No outgoing edges from '{}'.", path);
+    } else {
+        for edge in &edges {
+            println!("{}  →  {}  ({})", edge.from, edge.to, edge.rel);
+        }
+    }
+
+    Ok(())
+}
+
+/// Print summary statistics from the discovered dependency graph.
 pub fn run_stats() -> Result<()> {
     let cwd = std::env::current_dir().context("failed to determine the current directory")?;
     let graph_db = cwd.join(".vfs").join("graph").join("graph.db");

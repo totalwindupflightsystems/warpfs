@@ -131,6 +131,50 @@ impl GraphDB {
         Ok((froms, tos))
     }
 
+    /// Query edges where `from = ?`, optionally filtered by relation type.
+    ///
+    /// Returns an empty `Vec` if no edges match. Use [`count_edges_from`] to
+    /// distinguish "no edges" from "file not in graph."
+    pub fn related(&self, from: &str, rel_filter: Option<&str>) -> GraphResult<Vec<Edge>> {
+        let (sql, params_vec): (&str, Vec<Box<dyn duckdb::ToSql>>) = if let Some(rel) = rel_filter {
+            (
+                "SELECT \"from\", \"to\", rel FROM edges WHERE \"from\" = ? AND rel = ?",
+                vec![Box::new(from.to_string()), Box::new(rel.to_string())],
+            )
+        } else {
+            (
+                "SELECT \"from\", \"to\", rel FROM edges WHERE \"from\" = ?",
+                vec![Box::new(from.to_string())],
+            )
+        };
+        let param_refs: Vec<&dyn duckdb::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+
+        let mut stmt = self.conn.prepare(sql)?;
+        let rows = stmt.query_map(param_refs.as_slice(), |row| {
+            Ok(Edge {
+                from: row.get::<_, String>(0)?,
+                to: row.get::<_, String>(1)?,
+                rel: row.get::<_, String>(2)?,
+            })
+        })?;
+
+        let mut edges = Vec::new();
+        for row in rows {
+            edges.push(row?);
+        }
+        Ok(edges)
+    }
+
+    /// Check whether a file path exists in the `edges` table (as `from` or `to`).
+    pub fn file_in_graph(&self, path: &str) -> GraphResult<bool> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM edges WHERE \"from\" = ? OR \"to\" = ?",
+            params![path, path],
+            |row| row.get::<_, i64>(0),
+        )?;
+        Ok(count > 0)
+    }
+
     /// Compute comprehensive [`GraphStats`] using DuckDB aggregate queries.
     pub fn stats(&self) -> GraphResult<GraphStats> {
         let total_edges: i64 =
