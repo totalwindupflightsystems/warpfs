@@ -30,8 +30,16 @@ struct InitArgs {}
 
 #[derive(clap::Args)]
 struct MetaArgs {
-    /// The file whose WarpFS metadata to inspect.
+    /// The file whose WarpFS metadata to inspect or set.
     path: String,
+
+    /// Set a WarpFS extended attribute (e.g. `user.vfs.feature`).
+    #[arg(long)]
+    set: Option<String>,
+
+    /// Value for --set. Accepts literal `\n` for multiline values.
+    #[arg(long, requires = "set")]
+    value: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -54,7 +62,7 @@ fn main() {
 
     let result = match cli.command {
         Commands::Init(_) => init::run(),
-        Commands::Meta(args) => meta::run(&args.path),
+        Commands::Meta(args) => meta::run(&args.path, args.set.as_deref(), args.value.as_deref()),
         Commands::Graph(GraphCommand::Discover) => graph::run_discover(),
         Commands::Graph(GraphCommand::Stats) => graph::run_stats(),
         Commands::Serve(args) => serve::run(args.mcp),

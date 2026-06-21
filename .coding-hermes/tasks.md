@@ -1,6 +1,6 @@
 # WarpFS Coding Tasks
 
-## [ ] `warpfs meta --set` — xattr write CLI
+## [x] `warpfs meta --set` — xattr write CLI
 - **Priority:** high
 - **Model:** deepseek-v4-flash
 - **Files:** warpfs-cli/src/commands/meta.rs, warpfs-metadata/src/lib.rs (add set_xattr)

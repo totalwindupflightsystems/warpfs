@@ -1,4 +1,4 @@
-//! `warpfs meta <path>` — list WarpFS extended attributes on a file.
+//! `warpfs meta <path>` — list or set WarpFS extended attributes on a file.
 
 use std::path::Path;
 
@@ -7,14 +7,30 @@ use warpfs_metadata::xattr;
 
 /// Print every `user.vfs.*` extended attribute on `path` (prefix stripped).
 ///
-/// If the file has no WarpFS metadata a short message is printed instead.
-pub fn run(path: &str) -> Result<()> {
+/// When `set_name` is provided, sets `user.vfs.<set_name>` to `value`
+/// (defaulting to empty string when `value` is `None`).
+///
+/// If the file has no WarpFS metadata a short message is printed instead
+/// (list mode) or the attribute is created (set mode).
+pub fn run(path: &str, set_name: Option<&str>, value: Option<&str>) -> Result<()> {
     let file_path = Path::new(path);
 
     if !file_path.exists() {
         anyhow::bail!("no such file: {path}");
     }
 
+    if let Some(name) = set_name {
+        // --set mode: write the extended attribute.
+        let v = value.unwrap_or("");
+        // Support literal `\n` in the value for multiline content.
+        let v = v.replace("\\n", "\n");
+        xattr::set_vfs_xattr(file_path, name, &v)
+            .with_context(|| format!("failed to set xattr user.vfs.{name} on {path}"))?;
+        println!("Set user.vfs.{name} = {v} on {path}");
+        return Ok(());
+    }
+
+    // List mode (default — no --set flag).
     let attrs = xattr::list_vfs_xattrs(file_path)
         .with_context(|| format!("failed to list xattrs for {path}"))?;
 
