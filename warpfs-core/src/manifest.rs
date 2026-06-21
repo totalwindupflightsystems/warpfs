@@ -904,7 +904,14 @@ impl Manifest {
     }
 
     pub fn from_str(yaml: &str) -> Result<Manifest, ManifestError> {
-        let manifest: Manifest = serde_yaml::from_str(yaml)?;
+        let manifest: Manifest = serde_yaml::from_str(yaml).map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("unknown field") || msg.contains("unknown variant") {
+                ManifestError::InvalidField(msg)
+            } else {
+                ManifestError::Parse(e)
+            }
+        })?;
         Ok(manifest)
     }
 }
