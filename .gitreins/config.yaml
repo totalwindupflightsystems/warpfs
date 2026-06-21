@@ -11,7 +11,7 @@ evaluator:
   max_output_tokens: "0.5M"
   tool_call_weight: 0.1
 defaults:
-  model: deepseek-v4-pro
+  model: deepseek-v4-flash
   check_for_updates: true
 history:
   enabled: true
