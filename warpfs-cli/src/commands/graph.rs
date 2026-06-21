@@ -1,10 +1,10 @@
-//! `warpfs graph discover` and `warpfs graph stats`.
+//! `warpfs graph discover`, `warpfs graph stats`, and `warpfs graph impact`.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use warpfs_graph::{GraphDB, Language, Parser};
+use warpfs_graph::{impact, GraphDB, ImpactResult, Language, Parser};
 use warpfs_metadata::inventory::{self, Edge};
 
 /// Directory names to skip when walking for source files.
@@ -137,6 +137,54 @@ pub fn run_related(path: &str, relation: Option<&str>) -> Result<()> {
     } else {
         for edge in &edges {
             println!("{}  →  {}  ({})", edge.from, edge.to, edge.rel);
+        }
+    }
+
+    Ok(())
+}
+
+/// Compute transitive impact: find all files that depend on `path`, directly
+/// or transitively, up to `max_depth` hops.
+///
+/// When `format` is `"json"`, prints the result as pretty-printed JSON.
+/// Otherwise prints each dependent file in human-readable text.
+pub fn run_impact(path: &str, max_depth: u32, format: Option<&str>) -> Result<()> {
+    let cwd = std::env::current_dir().context("failed to determine the current directory")?;
+    let graph_db = cwd.join(".vfs").join("graph").join("graph.db");
+
+    if !graph_db.exists() {
+        anyhow::bail!("No graph data. Run `warpfs graph discover` first.");
+    }
+
+    let graph_db_str = graph_db.to_str().unwrap_or(".vfs/graph/graph.db");
+    let graph = GraphDB::open(graph_db_str).context("failed to open DuckDB graph database")?;
+
+    // Check whether the file exists in the graph at all.
+    if !graph
+        .file_in_graph(path)
+        .context("failed to query graph for file existence")?
+    {
+        anyhow::bail!("not found in graph");
+    }
+
+    let results = impact::compute_impact(graph.conn(), path, max_depth)
+        .context("failed to compute impact")?;
+
+    match format {
+        Some("json") => {
+            let result = ImpactResult { files: results };
+            let json = warpfs_graph::serde_json::to_string_pretty(&result)
+                .context("failed to serialize impact results as JSON")?;
+            println!("{}", json);
+        }
+        _ => {
+            if results.is_empty() {
+                println!("No dependents found for '{}'.", path);
+            } else {
+                for file in &results {
+                    println!("{}  ←  {}  (depth: {})", file.path, file.relation, file.depth);
+                }
+            }
         }
     }
 

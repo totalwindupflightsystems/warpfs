@@ -19,7 +19,7 @@
 - **Notes:** DuckDB query: `SELECT * FROM edges WHERE from = ?`; add subcommand with --relation filter
 - **Result:** Implemented directly. Added `GraphDB::related()` and `GraphDB::file_in_graph()` to warpfs-graph, wired `Related` subcommand with `--relation` filter to warpfs-cli. Build clean, 62/62 tests pass.
 
-## [ ] Phase 2: `warpfs graph impact <path>` — transitive impact analysis
+## [x] Phase 2: `warpfs graph impact <path>` — transitive impact analysis
 - **Priority:** high
 - **Model:** glm-5.2
 - **Provider:** zai-glm
@@ -29,7 +29,7 @@
 - **AC:** circular imports do not cause infinite loop — traversal terminates
 - **AC:** `warpfs graph impact src/main.rs --format json` outputs valid JSON with {files: [{path, relation, depth}]}
 - **AC:** `cargo test -p warpfs_graph` — 3+ new tests for impact traversal (direct, transitive, circular)
-- **Notes:** Uses petgraph from edges.jsonl → DuckDB query or in-memory BFS/DFS with depth limit. Scaffold: create warpfs-graph/src/impact.rs with `ImpactResult` struct, `fn compute_impact(path, max_depth) -> Vec<ImpactFile>`
+- **Result:** GLM 5.2 spawn → 6 files: impact.rs (74 lines, BFS with visited-set cycle protection), lib.rs (+impact module + re-exports + serde_json re-export), graph.rs (+conn() accessor), main.rs (+Impact subcommand + ImpactArgs), commands/graph.rs (+run_impact with text/JSON output), impact_test.rs (7 tests). Full workspace 69/69 pass. Build clean.
 
 ## [ ] Phase 2: DuckDB rule engine — `vfs_rule_check` / `vfs_rule_list`
 - **Priority:** high

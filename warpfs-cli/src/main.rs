@@ -18,7 +18,7 @@ enum Commands {
     Init(InitArgs),
     /// Show WarpFS extended attributes for a file.
     Meta(MetaArgs),
-    /// Dependency-graph discovery and statistics.
+    /// Dependency-graph discovery, statistics, and impact analysis.
     #[command(subcommand)]
     Graph(GraphCommand),
     /// Run a WarpFS server (MCP stub).
@@ -50,6 +50,8 @@ enum GraphCommand {
     Stats,
     /// Query graph edges for a specific file.
     Related(RelatedArgs),
+    /// Find all files that transitively depend on a given file (impact analysis).
+    Impact(ImpactArgs),
 }
 
 #[derive(clap::Args)]
@@ -60,6 +62,20 @@ struct RelatedArgs {
     /// Filter edges by relation type (e.g., "imports", "calls").
     #[arg(long)]
     relation: Option<String>,
+}
+
+#[derive(clap::Args)]
+struct ImpactArgs {
+    /// The file whose transitive dependents to find.
+    path: String,
+
+    /// Maximum depth of transitive traversal (default: 10).
+    #[arg(long, default_value = "10")]
+    max_depth: u32,
+
+    /// Output format: "text" (default) or "json".
+    #[arg(long)]
+    format: Option<String>,
 }
 
 #[derive(clap::Args)]
@@ -78,6 +94,7 @@ fn main() {
         Commands::Graph(GraphCommand::Discover) => graph::run_discover(),
         Commands::Graph(GraphCommand::Stats) => graph::run_stats(),
         Commands::Graph(GraphCommand::Related(args)) => graph::run_related(&args.path, args.relation.as_deref()),
+        Commands::Graph(GraphCommand::Impact(args)) => graph::run_impact(&args.path, args.max_depth, args.format.as_deref()),
         Commands::Serve(args) => serve::run(args.mcp),
     };
 

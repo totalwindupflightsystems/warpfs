@@ -175,6 +175,11 @@ impl GraphDB {
         Ok(count > 0)
     }
 
+    /// Access the underlying DuckDB connection (for direct queries by other modules).
+    pub fn conn(&self) -> &Connection {
+        &self.conn
+    }
+
     /// Compute comprehensive [`GraphStats`] using DuckDB aggregate queries.
     pub fn stats(&self) -> GraphResult<GraphStats> {
         let total_edges: i64 =
