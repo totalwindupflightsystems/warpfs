@@ -4,3 +4,5 @@
 
 # Rust build
 target/
+*research*.md
+.gitreins/config.yaml.bak*
