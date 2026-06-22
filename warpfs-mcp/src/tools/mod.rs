@@ -100,6 +100,28 @@ pub fn list_tools() -> Vec<Tool> {
                 "required": ["name"]
             }),
         },
+        Tool {
+            name: "vfs_list_directory".into(),
+            description: "List entries in a virtual directory from the backends mount table.".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Virtual directory path to list"}
+                },
+                "required": ["path"]
+            }),
+        },
+        Tool {
+            name: "vfs_resolve_path".into(),
+            description: "Resolve a virtual path to its real storage location.".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Virtual path to resolve"}
+                },
+                "required": ["path"]
+            }),
+        },
     ]
 }
 
@@ -119,6 +141,8 @@ pub fn call_tool(name: &str, arguments: &serde_json::Value) -> McpResult<serde_j
         "vfs_graph_impact" => graph_impact(arguments),
         "vfs_rule_list" => rule_list(arguments),
         "vfs_rule_check" => rule_check(arguments),
+        "vfs_list_directory" => list_directory(arguments),
+        "vfs_resolve_path" => resolve_path_mcp(arguments),
         other => Err(McpError::Protocol(format!("Unknown tool: {other}"))),
     }
 }
@@ -361,3 +385,19 @@ fn rule_check(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
         }
     }
 }
+
+fn list_directory(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
+    let path = arguments["path"].as_str().ok_or_else(|| McpError::Protocol("missing path".into()))?;
+    let manifest = load_manifest()?;
+    let entries = warpfs_core::virtual_dir::list_directory(&manifest, path);
+    Ok(serde_json::json!({ "entries": entries, "total": entries.len() }))
+}
+fn resolve_path_mcp(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
+    let path = arguments["path"].as_str().ok_or_else(|| McpError::Protocol("missing path".into()))?;
+    let manifest = load_manifest()?;
+    match warpfs_core::virtual_dir::resolve_path(&manifest, path) {
+        Some(r) => Ok(serde_json::to_value(r)?),
+        None => Ok(serde_json::json!({"error":"not found","path":path})),
+    }
+}
+
