@@ -1,5 +1,19 @@
 # WarpFS Coding Tasks
 
+## [x] Phase 5: Plugin system — extism wasm runtime, host functions, hot-loading
+- **Priority:** high
+- **Model:** glm-5.2
+- **Provider:** zai-glm
+- **Files:** warpfs-plugins/src/runtime.rs, warpfs-plugins/src/host_functions.rs, warpfs-plugins/src/registry.rs, warpfs-plugins/src/lib.rs
+- **AC:** `cargo build -p warpfs_plugins` compiles clean
+- **AC:** `PluginRuntime::new()` creates extism runtime, `load_plugin("sql_scanner.wasm")` loads a .wasm module
+- **AC:** Host functions exposed to plugins: `get_file_content`, `get_xattr`, `set_xattr`, `add_edge`, `query_graph`, `emit_warning` — each callable from wasm
+- **AC:** `PluginRegistry::discover(".vfs/plugins/")` finds all .wasm files and returns Vec<PluginManifest>
+- **AC:** Hook dispatch: `dispatch_hook("file_write", path, ast_json)` calls matching plugin hooks in priority order
+- **AC:** Plugin sandboxing: plugins cannot access filesystem directly (wasm sandbox), only through host functions
+- **AC:** `cargo test -p warpfs_plugins` — 5+ tests (runtime creation, registry discovery, hook dispatch, host function call, sandbox enforcement)
+- **Result:** GLM 5.2 spawn → 5 files, +516/-3 lines. host_functions.rs (93 lines): 6 host functions with call_host_function dispatcher, accumulators for edges/warnings. runtime.rs (141 lines): PluginRuntime with load_plugin, unload_plugin, dispatch_hook (priority-sorted, HookResult generation). registry.rs (83 lines): discover() scans .vfs/plugins/ for .wasm, produces PluginManifest entries. lib.rs: re-exports. tests/plugin_test.rs (197 lines): 13 tests. Full workspace 116/116 pass.
+
 ## [x] `warpfs meta --set` — xattr write CLI
 - **Priority:** high
 - **Model:** deepseek-v4-flash
