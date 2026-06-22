@@ -11,4 +11,9 @@ thiserror = "1"
 git2 = "0.19"
 aws-sdk-s3 = "1"
 aws-config = "1"
+sha2 = "0.10"
+xattr = "1"
 tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+tempfile = "3"

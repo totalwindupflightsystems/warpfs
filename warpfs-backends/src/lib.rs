@@ -11,7 +11,7 @@ pub mod s3;
 pub mod git;
 pub mod local;
 
-pub use s3::{S3Client, S3Error, S3Result};
+pub use s3::{S3Client, S3Error, S3Result, WriteResult};
 pub use git::{GitBackend, GitBackendConfig, GitError, GitResult};
 
 /// Resolve a virtual path to its real storage location.
