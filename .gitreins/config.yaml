@@ -4,11 +4,12 @@ guards:
   tests: true
   test_mode: full
   test_command: cargo test
+  static_analysis: false
 evaluator:
   max_iterations: 50
-  max_time: "10m"
-  max_input_tokens: "-1"
-  max_output_tokens: "0.5M"
+  max_time: 10m
+  max_input_tokens: '-1'
+  max_output_tokens: 0.5M
   tool_call_weight: 0.1
 defaults:
   model: deepseek-v4-flash
