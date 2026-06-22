@@ -77,7 +77,7 @@
 - **AC:** passes through to `warpfs_graph::impact::compute_impact()`
 - **Result:** Implemented directly. Added graph_impact() handler to warpfs-mcp/src/tools/mod.rs, registered in list_tools() and call_tool() dispatch. Passes through to impact::compute_impact via db.conn(). Test updated (>=4 tools).
 
-## [ ] Phase 3: S3 backend — read-only mount
+## [x] Phase 3: S3 backend — read-only mount
 - **Priority:** medium
 - **Model:** glm-5.2
 - **Provider:** zai-glm
@@ -87,7 +87,7 @@
 - **AC:** Read from /mnt/vfs/models/file.bin resolves to S3 GET, cached locally
 - **AC:** Write to read-only S3 mount returns EACCES (permission denied)
 - **AC:** Cache respects TTL from manifest; stale files re-fetched
-- **Notes:** No FUSE yet — this is the backend plumbing that provides file content resolution. Use rusoto or aws-sdk-rust. Scaffold: create warpfs-backends crate, add to workspace members.
+- **Notes:** GLM 5.2 rate-limited (429×2) → fell back to owl-alpha (free). Owl-alpha wrote all 6 files. Implemented S3Client (aws-sdk-s3) with get_object, list_objects, cache freshness (TTL-based), CacheMeta sidecar, S3Error enum with ReadOnly variant, CLI backend mount/list subcommands. 4 tests (cache_path, CacheMeta roundtrip, S3Error display). Build clean, 87/87 tests pass.
 
 ## [ ] Phase 3: S3 write-through with auto-upload
 - **Priority:** medium

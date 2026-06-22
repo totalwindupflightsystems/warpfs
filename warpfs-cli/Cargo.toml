@@ -16,3 +16,4 @@ warpfs_core = { path = "../warpfs-core" }
 warpfs_metadata = { path = "../warpfs-metadata" }
 warpfs_graph = { path = "../warpfs-graph" }
 warpfs_mcp = { path = "../warpfs-mcp" }
+warpfs_backends = { path = "../warpfs-backends" }

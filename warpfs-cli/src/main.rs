@@ -2,7 +2,7 @@ mod commands;
 
 use clap::{Parser, Subcommand};
 
-use commands::{graph, init, meta, serve};
+use commands::{backend, graph, init, meta, serve};
 
 /// WarpFS command-line interface.
 #[derive(Parser)]
@@ -23,6 +23,9 @@ enum Commands {
     Graph(GraphCommand),
     /// Run a WarpFS server (MCP stub).
     Serve(ServeArgs),
+    /// Manage virtual backends (S3, git, remote, local).
+    #[command(subcommand)]
+    Backend(commands::backend::BackendCommand),
 }
 
 #[derive(clap::Args)]
@@ -108,6 +111,8 @@ fn main() {
         Commands::Graph(GraphCommand::RuleList) => graph::run_rule_list(),
         Commands::Graph(GraphCommand::RuleCheck(args)) => graph::run_rule_check(&args.name),
         Commands::Serve(args) => serve::run(args.mcp),
+        Commands::Backend(commands::backend::BackendCommand::Mount(args)) => backend::run_mount(&args),
+        Commands::Backend(commands::backend::BackendCommand::List) => backend::run_list(),
     };
 
     if let Err(e) = result {

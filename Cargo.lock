@@ -4887,6 +4887,7 @@ dependencies = [
  "clap",
  "serde",
  "serde_yaml",
+ "warpfs_backends",
  "warpfs_core",
  "warpfs_graph",
  "warpfs_mcp",
@@ -4902,6 +4903,7 @@ dependencies = [
  "git2",
  "serde",
  "serde_json",
+ "thiserror 1.0.69",
  "tokio",
 ]
 

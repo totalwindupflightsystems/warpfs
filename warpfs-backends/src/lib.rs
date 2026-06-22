@@ -11,6 +11,8 @@ pub mod s3;
 pub mod git;
 pub mod local;
 
+pub use s3::{S3Client, S3Error, S3Result};
+
 /// Resolve a virtual path to its real storage location.
 pub enum Backend {
     S3 { bucket: String, prefix: String, region: String, writable: bool },
