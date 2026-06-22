@@ -2,7 +2,7 @@ mod commands;
 
 use clap::{Parser, Subcommand};
 
-use commands::{backend, graph, init, meta, serve};
+use commands::{backend, graph, init, meta, mount, serve};
 
 /// WarpFS command-line interface.
 #[derive(Parser)]
@@ -26,6 +26,20 @@ enum Commands {
     /// Manage virtual backends (S3, git, remote, local).
     #[command(subcommand)]
     Backend(commands::backend::BackendCommand),
+    /// Mount a WarpFS virtual filesystem via FUSE.
+    Mount(MountArgs),
+}
+
+#[derive(clap::Args)]
+struct MountArgs {
+    /// Directory to mount the filesystem at.
+    mount_point: String,
+    /// Enable trigger engine (file watchers).
+    #[arg(long)]
+    triggers: bool,
+    /// Allow other users to access the mount.
+    #[arg(long)]
+    allow_other: bool,
 }
 
 #[derive(clap::Args)]
@@ -111,8 +125,13 @@ fn main() {
         Commands::Graph(GraphCommand::RuleList) => graph::run_rule_list(),
         Commands::Graph(GraphCommand::RuleCheck(args)) => graph::run_rule_check(&args.name),
         Commands::Serve(args) => serve::run(args.mcp),
-        Commands::Backend(commands::backend::BackendCommand::Mount(args)) => backend::run_mount(&args),
+        Commands::Backend(commands::backend::BackendCommand::Mount(args)) => {
+            backend::run_mount(&args)
+        }
         Commands::Backend(commands::backend::BackendCommand::List) => backend::run_list(),
+        Commands::Mount(args) => {
+            mount::run_mount(&args.mount_point, args.triggers, args.allow_other)
+        }
     };
 
     if let Err(e) = result {

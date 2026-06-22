@@ -9,11 +9,10 @@ paths = [
   '''.git/''',
   '''.gitreins/''',
   '''.gitreins/history/''',
-  '''*.log''',
   '''target/''',
   '''specs/''',
   '''docs/''',
-  '''*.spec.md''',
-  '''*.md''',
+  '''.*\\.log$''',
+  '''.*\\.spec\\.md$''',
+  '''.*\\.md$''',
 ]
-

@@ -4889,6 +4889,7 @@ dependencies = [
  "serde_yaml",
  "warpfs_backends",
  "warpfs_core",
+ "warpfs_fuse",
  "warpfs_graph",
  "warpfs_mcp",
  "warpfs_metadata",
@@ -4924,9 +4925,14 @@ dependencies = [
 name = "warpfs_fuse"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "fuser",
+ "glob",
+ "libc",
  "serde",
+ "tempfile",
  "tokio",
+ "warpfs_metadata",
 ]
 
 [[package]]

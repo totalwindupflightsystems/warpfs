@@ -7,4 +7,11 @@ description = "WarpFS FUSE daemon — kernel-level virtual filesystem with permi
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 fuser = "0.15"
+anyhow = "1"
 tokio = { version = "1", features = ["full"] }
+glob = "0.3"
+libc = "0.2"
+warpfs_metadata = { path = "../warpfs-metadata" }
+
+[dev-dependencies]
+tempfile = "3"

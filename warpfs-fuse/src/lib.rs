@@ -5,13 +5,16 @@
 // Agents use cat/ls/getfattr — no special tools needed.
 
 pub mod daemon;
-pub mod permissions;
 pub mod ops;
+pub mod permissions;
 pub mod triggers;
 
 use std::path::PathBuf;
 
+pub use ops::{InodeEntry, InodeKind, WarpFS};
+
 /// FUSE mount configuration from manifest.
+#[derive(Clone)]
 pub struct FuseConfig {
     pub mount_point: PathBuf,
     pub allow_other: bool,
@@ -25,7 +28,7 @@ pub struct FuseConfig {
 
 /// Permission mode enforced by the kernel.
 pub struct PermissionRule {
-    pub paths: Vec<String>,  // glob patterns
-    pub mode: u32,           // octal (0444, 0644)
+    pub paths: Vec<String>, // glob patterns
+    pub mode: u32,          // octal (0444, 0644)
     pub allow_delete: bool,
 }

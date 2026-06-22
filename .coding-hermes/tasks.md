@@ -116,7 +116,7 @@
 - **AC:** MCP tool `vfs_resolve_path` returns real_path, backend, cached, sync_status
 - **Result:** Implemented directly. warpfs-core/src/virtual_dir.rs with list_directory() and resolve_path() across S3, remote git, and local backends. MCP tools wired in warpfs-mcp/tools. 73 tests, all green.
 
-## [ ] Phase 4: FUSE read-only mount — basic filesystem operations
+## [x] Phase 4: FUSE read-only mount — basic filesystem operations
 - **Priority:** high
 - **Model:** glm-5.2
 - **Provider:** zai-glm
@@ -128,6 +128,7 @@
 - **AC:** `cargo test -p warpfs_fuse` — 6+ tests for ops (lookup existing/missing, getattr, readdir entries, read content, getxattr, permission mode bits)
 - **AC:** FUSE daemon starts, serves directory listing, accepts getxattr, unmounts cleanly
 - **Notes:** `fuser = "0.15"` already in Cargo.toml, `libfuse3-dev` installed. fuser API: implement `fuser::Filesystem` trait. Use `FileAttr`, `FileType::RegularFile`/`Directory`. Inode allocation: simple u64 counter. File content from mapped backend paths. getxattr calls warpfs_metadata::get_xattr(). For tests: mock backend with HashMap<String, Vec<u8>> file store.
+- **Result:** GLM 5.2 spawned for source, foreman fixed anyhow::Result + .gitleaks.toml regex, wrote 9 integration tests directly. warpfs-fuse: ops.rs 494 lines, daemon.rs 73 lines, permissions.rs 120 lines. warpfs-cli: mount.rs 39 lines, main.rs +5 lines, mod.rs +1 line. Full workspace 94/94 pass. Guard PASS.
 
 ## Models Reference
 
