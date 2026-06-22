@@ -8,6 +8,11 @@ pub mod runtime;
 pub mod host_functions;
 pub mod registry;
 
+// Re-exports for ergonomic access.
+pub use runtime::PluginRuntime;
+pub use host_functions::HostFunctions;
+pub use registry::{HookRef, PluginManifest, PluginRegistry};
+
 /// A loaded plugin instance.
 pub struct PluginInstance {
     pub name: String,
