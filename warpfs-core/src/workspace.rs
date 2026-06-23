@@ -1,5 +1,9 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use crate::worktree::WorktreeManager;
 
 // ============================================================
 // ERROR TYPE
@@ -208,6 +212,48 @@ impl WorkspaceManifest {
 
         errors
     }
+
+    /// Build a mount plan: resolve each mount source to its backing path.
+    pub fn build_mount_plan(&self) -> Result<Vec<MountEntry>, WorkspaceError> {
+        let mut entries = Vec::new();
+        let mgr = WorktreeManager::new().map_err(|e| WorkspaceError::Validation(e.to_string()))?;
+
+        for mount in &self.mounts {
+            // Check if source is a repo
+            if let Some(repo) = self.repos.iter().find(|r| r.name == mount.source) {
+                let path = mgr
+                    .ensure(&repo.name, &repo.url, &repo.r#ref)
+                    .map_err(|e| WorkspaceError::Validation(format!(
+                        "failed to ensure worktree for {}: {}", repo.name, e
+                    )))?;
+                entries.push(MountEntry {
+                    name: mount.source.clone(),
+                    backing_path: path,
+                    at: mount.at.clone(),
+                    writable: repo.writable,
+                });
+            } else if let Some(backend) = self.backends.iter().find(|b| b.name == mount.source) {
+                let path = PathBuf::from(&backend.mount_point);
+                entries.push(MountEntry {
+                    name: mount.source.clone(),
+                    backing_path: path,
+                    at: mount.at.clone(),
+                    writable: false, // backends default to read-only unless configured
+                });
+            }
+        }
+
+        Ok(entries)
+    }
+}
+
+/// An entry in the workspace mount plan — one mounted source.
+#[derive(Debug, Clone)]
+pub struct MountEntry {
+    pub name: String,
+    pub backing_path: PathBuf,
+    pub at: String,
+    pub writable: bool,
 }
 
 // ============================================================

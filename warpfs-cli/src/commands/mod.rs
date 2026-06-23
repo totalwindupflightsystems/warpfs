@@ -6,3 +6,4 @@ pub mod init;
 pub mod meta;
 pub mod mount;
 pub mod serve;
+pub mod workspace;

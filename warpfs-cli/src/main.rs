@@ -2,7 +2,7 @@ mod commands;
 
 use clap::{Parser, Subcommand};
 
-use commands::{backend, graph, init, meta, mount, serve};
+use commands::{backend, graph, init, meta, mount, serve, workspace};
 
 /// WarpFS command-line interface.
 #[derive(Parser)]
@@ -28,6 +28,9 @@ enum Commands {
     Backend(commands::backend::BackendCommand),
     /// Mount a WarpFS virtual filesystem via FUSE.
     Mount(MountArgs),
+    /// Manage multi-repo workspace mounts.
+    #[command(subcommand)]
+    Workspace(WorkspaceCommand),
 }
 
 #[derive(clap::Args)]
@@ -126,6 +129,29 @@ struct ServeArgs {
     mcp: bool,
 }
 
+#[derive(Subcommand)]
+enum WorkspaceCommand {
+    /// Mount all repos and backends from the manifest.
+    Mount(WorkspaceMountArgs),
+    /// Unmount a workspace.
+    Unmount(WorkspaceUnmountArgs),
+}
+
+#[derive(clap::Args)]
+struct WorkspaceMountArgs {
+    /// Path to the workspace manifest YAML (e.g., .vfs/manifest.yaml).
+    #[arg(long, default_value = ".vfs/manifest.yaml")]
+    manifest: String,
+    /// Directory to mount the workspace at.
+    mount_point: String,
+}
+
+#[derive(clap::Args)]
+struct WorkspaceUnmountArgs {
+    /// Directory to unmount.
+    mount_point: String,
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -145,6 +171,12 @@ fn main() {
         Commands::Backend(commands::backend::BackendCommand::List) => backend::run_list(),
         Commands::Mount(args) => {
             mount::run_mount(&args.mount_point, args.triggers, args.allow_other)
+        }
+        Commands::Workspace(WorkspaceCommand::Mount(args)) => {
+            workspace::run_workspace_mount(&args.manifest, &args.mount_point)
+        }
+        Commands::Workspace(WorkspaceCommand::Unmount(args)) => {
+            workspace::run_workspace_unmount(&args.mount_point)
         }
     };
 

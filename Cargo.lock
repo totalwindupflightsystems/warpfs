@@ -4935,6 +4935,7 @@ dependencies = [
  "serde",
  "tempfile",
  "tokio",
+ "warpfs_core",
  "warpfs_metadata",
 ]
 

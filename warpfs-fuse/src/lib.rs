@@ -8,6 +8,7 @@ pub mod daemon;
 pub mod ops;
 pub mod permissions;
 pub mod triggers;
+pub mod workspace_mount;
 
 use std::path::PathBuf;
 
