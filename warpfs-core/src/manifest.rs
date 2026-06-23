@@ -915,3 +915,123 @@ impl Manifest {
         Ok(manifest)
     }
 }
+
+// ============================================================
+// TESTS
+// ============================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod defaults {
+        use super::*;
+
+        #[test]
+        fn true_returns_true()         { assert_eq!(default_true(), true); }
+        #[test]
+        fn version_is_2()              { assert_eq!(default_version(), 2); }
+        #[test]
+        fn mount_point()               { assert_eq!(default_mount_point(), "/mnt/vfs/project"); }
+        #[test]
+        fn ninep_listen()              { assert_eq!(default_ninep_listen(), "0.0.0.0:5640"); }
+        #[test]
+        fn mcp_transport()             { assert_eq!(default_mcp_transport(), "stdio"); }
+        #[test]
+        fn mcp_port()                  { assert_eq!(default_mcp_port(), 8766); }
+        #[test]
+        fn repo_ref()                  { assert_eq!(default_repo_ref(), "main"); }
+        #[test]
+        fn ttl_is_3600()               { assert_eq!(default_ttl(), 3600); }
+        #[test]
+        fn max_edges()                 { assert_eq!(default_max_edges(), 100_000); }
+        #[test]
+        fn impact_depth()              { assert_eq!(default_impact_depth(), 5); }
+        #[test]
+        fn default_mode()              { assert_eq!(default_default_mode(), "0644"); }
+        #[test]
+        fn trigger_timeout()           { assert_eq!(default_trigger_timeout(), "5s"); }
+        #[test]
+        fn plugin_priority()           { assert_eq!(default_plugin_priority(), 10); }
+        #[test]
+        fn fi_strategy()               { assert_eq!(default_fi_strategy(), "directory"); }
+        #[test]
+        fn cache_path()                { assert_eq!(default_cache_path(), ".vfs/cache/"); }
+        #[test]
+        fn cache_max_size()            { assert_eq!(default_cache_max_size(), "1GB"); }
+        #[test]
+        fn attr_timeout_positive()     { assert!(default_attr_timeout() > 0.0); }
+        #[test]
+        fn entry_timeout_positive()    { assert!(default_entry_timeout() > 0.0); }
+        #[test]
+        fn max_read()                  { assert_eq!(default_max_read(), 131_072); }
+        #[test]
+        fn max_write()                 { assert_eq!(default_max_write(), 131_072); }
+        #[test]
+        fn duckdb_threads()            { assert_eq!(default_duckdb_threads(), 4); }
+        #[test]
+        fn duckdb_memory()             { assert_eq!(default_duckdb_memory(), "512MB"); }
+        #[test]
+        fn debounce()                  { assert_eq!(default_debounce(), "500ms"); }
+        #[test]
+        fn max_concurrent()            { assert_eq!(default_max_concurrent(), 8); }
+
+        #[test]
+        fn languages_has_all_9() {
+            let v = default_languages();
+            assert_eq!(v.len(), 9);
+            for lang in &["go","python","typescript","rust","javascript","java","c","cpp","ruby"] {
+                assert!(v.contains(&lang.to_string()), "missing: {}", lang);
+            }
+        }
+
+        #[test]
+        fn test_patterns_has_all_4() {
+            let v = default_test_patterns();
+            assert_eq!(v.len(), 4);
+            for pat in &["*_test.go","test_*.py","*.test.ts","*.spec.ts"] {
+                assert!(v.contains(&pat.to_string()), "missing: {}", pat);
+            }
+        }
+    }
+
+    mod serde_helpers {
+        use super::*;
+
+        #[derive(Deserialize)]
+        struct Wrapper {
+            #[serde(deserialize_with = "string_or_vec")]
+            items: Vec<String>,
+        }
+
+        #[test]
+        fn string_or_vec_single() {
+            let v: Wrapper = serde_yaml::from_str("items: hello").unwrap();
+            assert_eq!(v.items, vec!["hello"]);
+        }
+
+        #[test]
+        fn string_or_vec_multi() {
+            let v: Wrapper = serde_yaml::from_str("items: [a, b, c]").unwrap();
+            assert_eq!(v.items, vec!["a", "b", "c"]);
+        }
+
+        #[derive(Deserialize)]
+        struct IntWrapper {
+            #[serde(deserialize_with = "string_or_int")]
+            value: String,
+        }
+
+        #[test]
+        fn string_or_int_string() {
+            let v: IntWrapper = serde_yaml::from_str("value: \"0444\"").unwrap();
+            assert_eq!(v.value, "0444");
+        }
+
+        #[test]
+        fn string_or_int_integer() {
+            let v: IntWrapper = serde_yaml::from_str("value: 444").unwrap();
+            assert_eq!(v.value, "444");
+        }
+    }
+}

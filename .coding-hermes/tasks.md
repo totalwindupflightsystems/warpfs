@@ -1,5 +1,14 @@
 # WarpFS Coding Tasks
 
+## [x] Phase 7: manifest default-function inline tests — 30 unit tests
+- **Priority:** medium
+- **Model:** deepseek-v4-pro (direct write — model match)
+- **Files:** warpfs-core/src/manifest.rs
+- **AC:** `cargo test -p warpfs_core` — 30+ new tests for all 27 private default_*() functions (return values, languages completeness, test patterns) + string_or_vec helper (single/multi) + string_or_int helper (string/integer)
+- **AC:** tests live in `#[cfg(test)] mod tests` at the bottom of manifest.rs (config-closed, no new files)
+- **AC:** Full workspace passes (`cargo test --workspace`), guard PASS
+- **Result:** Implemented directly by foreman. manifest.rs +121 lines: 30 inline tests in nested `mod defaults` + `mod serde_helpers` submodules. Covers all 27 default_*() helpers (true, version, mount_point, ninep_listen, mcp_transport, mcp_port, repo_ref, ttl, max_edges, impact_depth, default_mode, trigger_timeout, plugin_priority, fi_strategy, cache_path, cache_max_size, attr_timeout, entry_timeout, max_read, max_write, duckdb_threads, duckdb_memory, debounce, max_concurrent, languages, test_patterns) + 2 serde helpers (string_or_vec, string_or_int). Full workspace 224/224 pass. Guard PASS.
+
 ## [x] Phase 5: Plugin system — extism wasm runtime, host functions, hot-loading
 - **Priority:** high
 - **Model:** glm-5.2
