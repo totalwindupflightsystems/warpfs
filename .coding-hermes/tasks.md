@@ -183,7 +183,7 @@
 - **Notes:** §6 in spec defines the manifest structure. YAML format: `repos: [{name:, url:, ref:, writable:, auto_pull:}], backends: [{name:, type:, config:}], mounts: [{source:, at:, options:}]`. Use serde_yaml. Add to warpfs-core since it's the central data model crate.
 - **Result:** GLM 5.2 spawn killed by OOM (exit 137) before producing output. Foreman implemented directly: workspace.rs (327 lines, 19 tests) with WorkspaceManifest, WorkspaceRepo, WorkspaceBackend, WorkspaceMount types + load/from_str/validate methods. Validation detects: empty names/urls/refs, invalid backend types, duplicate repo/backend/mount names, orphan mount sources. Full workspace 147/147 pass. Guard PASS.
 
-## [ ] Phase 6: Git worktree manager — clone, pull, checkout under ~/.warpfs/worktrees/
+## [x] Phase 6: Git worktree manager — clone, pull, checkout under ~/.warpfs/worktrees/
 - **Priority:** high
 - **Model:** glm-5.2
 - **Provider:** zai-glm

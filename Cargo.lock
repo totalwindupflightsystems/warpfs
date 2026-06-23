@@ -4901,6 +4901,7 @@ version = "0.1.0"
 dependencies = [
  "aws-config",
  "aws-sdk-s3",
+ "filetime",
  "git2",
  "serde",
  "serde_json",
@@ -4915,6 +4916,8 @@ dependencies = [
 name = "warpfs_core"
 version = "0.1.0"
 dependencies = [
+ "filetime",
+ "git2",
  "serde",
  "serde_yaml",
  "tempfile",
