@@ -175,3 +175,255 @@ fn checkout_ref(repo: &Repository, ref_name: &str) -> GitResult<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    /// Create a bare Git repo in a temp directory with an initial commit.
+    fn init_bare_repo() -> (TempDir, String) {
+        let dir = tempfile::tempdir().unwrap();
+        let repo_path = dir.path().join("test-repo.git");
+        std::fs::create_dir_all(&repo_path).unwrap();
+
+        let output = Command::new("git")
+            .args(["init", "--bare", "-b", "main"])
+            .arg(&repo_path)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "git init failed: {:?}", output);
+
+        let work = dir.path().join("work");
+        let url = format!("file://{}", repo_path.display());
+        let output = Command::new("git")
+            .args(["clone", &url, work.to_str().unwrap()])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "git clone failed: {:?}", output);
+
+        std::fs::write(work.join("README.md"), "# test\n").unwrap();
+        let output = Command::new("git")
+            .args(["-C", work.to_str().unwrap(), "add", "README.md"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let output = Command::new("git")
+            .args(["-C", work.to_str().unwrap(), "commit", "-m", "initial"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let output = Command::new("git")
+            .args(["-C", work.to_str().unwrap(), "push", "origin", "main"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+
+        (dir, url)
+    }
+
+    #[test]
+    fn test_sanitize_name_github_url() {
+        let name = sanitize_name("https://github.com/org/repo.git");
+        assert_eq!(name, "github_com_org_repo_git");
+    }
+
+    #[test]
+    fn test_sanitize_name_ssh_url() {
+        let name = sanitize_name("git@github.com:org/repo.git");
+        assert_eq!(name, "github_com_org_repo_git");
+    }
+
+    #[test]
+    fn test_git_error_display() {
+        assert!(
+            GitError::ReadOnly.to_string().contains("read-only"),
+            "expected read-only, got: {}",
+            GitError::ReadOnly
+        );
+        assert!(
+            GitError::NotFound(PathBuf::from("/tmp/nope"))
+                .to_string()
+                .contains("/tmp/nope"),
+            "expected path in NotFound"
+        );
+    }
+
+    #[test]
+    fn test_git_backend_mount_clones_repo() {
+        let (_dir, url) = init_bare_repo();
+        let tmp = tempfile::tempdir().unwrap();
+
+        let config = GitBackendConfig {
+            url: url.clone(),
+            ref_name: "main".to_string(),
+            at: "/vfs/repo".to_string(),
+            writable: false,
+            auto_pull_secs: None,
+            cache_dir: Some(tmp.path().to_path_buf()),
+        };
+
+        let backend = GitBackend::mount(config).unwrap();
+        assert!(backend.worktree.join("README.md").exists());
+        assert!(!backend.writable());
+        assert_eq!(backend.mount_point(), "/vfs/repo");
+    }
+
+    #[test]
+    fn test_git_backend_resolve_existing_path() {
+        let (_dir, url) = init_bare_repo();
+        let tmp = tempfile::tempdir().unwrap();
+
+        let config = GitBackendConfig {
+            url: url.clone(),
+            ref_name: "main".to_string(),
+            at: "/vfs/repo".to_string(),
+            writable: true,
+            auto_pull_secs: None,
+            cache_dir: Some(tmp.path().to_path_buf()),
+        };
+
+        let backend = GitBackend::mount(config).unwrap();
+        let resolved = backend.resolve("/vfs/repo/README.md").unwrap();
+        assert!(resolved.exists());
+        assert!(resolved.to_string_lossy().contains("README.md"));
+    }
+
+    #[test]
+    fn test_git_backend_resolve_missing_path() {
+        let (_dir, url) = init_bare_repo();
+        let tmp = tempfile::tempdir().unwrap();
+
+        let config = GitBackendConfig {
+            url: url.clone(),
+            ref_name: "main".to_string(),
+            at: "/vfs/repo".to_string(),
+            writable: false,
+            auto_pull_secs: None,
+            cache_dir: Some(tmp.path().to_path_buf()),
+        };
+
+        let backend = GitBackend::mount(config).unwrap();
+        let result = backend.resolve("/vfs/repo/nonexistent.txt");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("repository not found")
+                || err.to_string().contains("not found"),
+                "expected NotFound, got: {}",
+                err);
+    }
+
+    #[test]
+    fn test_git_backend_info() {
+        let (_dir, url) = init_bare_repo();
+        let tmp = tempfile::tempdir().unwrap();
+
+        let config = GitBackendConfig {
+            url: url.clone(),
+            ref_name: "main".to_string(),
+            at: "/vfs/repo".to_string(),
+            writable: true,
+            auto_pull_secs: None,
+            cache_dir: Some(tmp.path().to_path_buf()),
+        };
+
+        let backend = GitBackend::mount(config).unwrap();
+        let info = backend.info();
+        assert_eq!(info.backend, "git");
+        assert_eq!(info.sync_status, "synced");
+        assert!(info.cached);
+        assert!(info.cache_path.is_some());
+    }
+
+    #[test]
+    fn test_git_backend_writable_respects_config() {
+        let (_dir, url) = init_bare_repo();
+        let tmp = tempfile::tempdir().unwrap();
+
+        let ro_config = GitBackendConfig {
+            url: url.clone(),
+            ref_name: "main".to_string(),
+            at: "/vfs/ro-repo".to_string(),
+            writable: false,
+            auto_pull_secs: None,
+            cache_dir: Some(tmp.path().to_path_buf()),
+        };
+        let ro = GitBackend::mount(ro_config).unwrap();
+        assert!(!ro.writable());
+
+        let rw_config = GitBackendConfig {
+            url: url.clone(),
+            ref_name: "main".to_string(),
+            at: "/vfs/rw-repo".to_string(),
+            writable: true,
+            auto_pull_secs: None,
+            cache_dir: Some(tmp.path().to_path_buf()),
+        };
+        let rw = GitBackend::mount(rw_config).unwrap();
+        assert!(rw.writable());
+    }
+
+    #[test]
+    fn test_git_backend_mount_reuses_existing_clone() {
+        let (_dir, url) = init_bare_repo();
+        let tmp = tempfile::tempdir().unwrap();
+
+        let config = GitBackendConfig {
+            url: url.clone(),
+            ref_name: "main".to_string(),
+            at: "/vfs/repo".to_string(),
+            writable: false,
+            auto_pull_secs: None,
+            cache_dir: Some(tmp.path().to_path_buf()),
+        };
+
+        let backend1 = GitBackend::mount(config).unwrap();
+        drop(backend1);
+
+        let config2 = GitBackendConfig {
+            url: url.clone(),
+            ref_name: "main".to_string(),
+            at: "/vfs/repo".to_string(),
+            writable: false,
+            auto_pull_secs: None,
+            cache_dir: Some(tmp.path().to_path_buf()),
+        };
+        let backend2 = GitBackend::mount(config2).unwrap();
+        assert!(backend2.worktree.join("README.md").exists());
+    }
+
+    #[test]
+    fn test_should_pull_no_fetch_head() {
+        let tmp = tempfile::tempdir().unwrap();
+        let worktree = tmp.path().join("no-fetch");
+        std::fs::create_dir_all(worktree.join(".git")).unwrap();
+        assert!(should_pull(&worktree, 3600));
+    }
+
+    #[test]
+    fn test_should_pull_returns_true_for_stale() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git_dir = tmp.path().join(".git");
+        std::fs::create_dir_all(&git_dir).unwrap();
+        let fetch_head = git_dir.join("FETCH_HEAD");
+        std::fs::write(&fetch_head, "stale\n").unwrap();
+
+        let two_hours_ago = std::time::SystemTime::now()
+            - std::time::Duration::from_secs(7200);
+        filetime::set_file_mtime(&fetch_head, two_hours_ago.into()).unwrap();
+
+        assert!(should_pull(tmp.path(), 3600));
+    }
+
+    #[test]
+    fn test_should_pull_returns_false_for_fresh() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git_dir = tmp.path().join(".git");
+        std::fs::create_dir_all(&git_dir).unwrap();
+        let fetch_head = git_dir.join("FETCH_HEAD");
+        std::fs::write(&fetch_head, "fresh\n").unwrap();
+
+        assert!(!should_pull(tmp.path(), 3600));
+    }
+}
