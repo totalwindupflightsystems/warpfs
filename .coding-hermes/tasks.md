@@ -169,7 +169,7 @@
 - **Notes:** 706 lines of production code with 0 tests. S3 tests: mock S3 with httptest (no real AWS creds needed). Git tests: `git init` temp bare repo, serve via file://. Local tests: tempdir path operations. Use `#[cfg(test)] mod tests` in existing source files OR integration tests in tests/ directory. All backends are file-system-adjacent (no network required for unit tests).
 - **Result:** Implemented directly by foreman (deepseek-v4-pro, model match). s3.rs already had 11 tests (cache_path, CacheMeta roundtrip, S3Error Display, SHA-256 determinism + empty, BlobEntry roundtrip, put_object ReadOnly, append_blob_index writes + appends, WriteResult fields). Added 12 git.rs tests: sanitize_name (GitHub URL, SSH URL), GitError Display, mount clones repo, resolve existing/missing path, info fields, writable respects config, mount reuses existing clone, should_pull (no FETCH_HEAD, stale, fresh). Test total: 23 (11 s3 + 12 git). Full workspace 128/128 pass. Guard PASS. local.rs is a 1-line stub — tests deferred until implementation.
 
-## [ ] Phase 6: Multi-repo workspace manifest — mount declaration loading
+## [x] Phase 6: Multi-repo workspace manifest — mount declaration loading
 - **Priority:** high
 - **Model:** glm-5.2
 - **Provider:** zai-glm
@@ -181,6 +181,7 @@
 - **AC:** `cargo test -p warpfs_core` — 5+ tests for manifest parsing (valid full manifest, minimal manifest, invalid YAML, missing required fields, duplicate mount names)
 - **AC:** `WorkspaceManifest::validate()` returns Vec<ValidationError> — detects missing repos, duplicate mount points, invalid backend types
 - **Notes:** §6 in spec defines the manifest structure. YAML format: `repos: [{name:, url:, ref:, writable:, auto_pull:}], backends: [{name:, type:, config:}], mounts: [{source:, at:, options:}]`. Use serde_yaml. Add to warpfs-core since it's the central data model crate.
+- **Result:** GLM 5.2 spawn killed by OOM (exit 137) before producing output. Foreman implemented directly: workspace.rs (327 lines, 19 tests) with WorkspaceManifest, WorkspaceRepo, WorkspaceBackend, WorkspaceMount types + load/from_str/validate methods. Validation detects: empty names/urls/refs, invalid backend types, duplicate repo/backend/mount names, orphan mount sources. Full workspace 147/147 pass. Guard PASS.
 
 ## [ ] Phase 6: Git worktree manager — clone, pull, checkout under ~/.warpfs/worktrees/
 - **Priority:** high
