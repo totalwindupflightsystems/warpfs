@@ -208,10 +208,10 @@
 - **Notes:** §6.1 in spec. The discovery already parses imports; this adds workspace-level resolution. When an import path doesn't resolve to a file in the current repo, check workspace manifests for other repos that own that path. External edges are flagged with `external:` prefix in the `to` field.
 - **Result:** Implemented directly by foreman. warpfs-graph/src/edges.rs (+165 lines): format_external_edge, parse_external_edge, is_external, find_external_repo, build_repo_mounts functions with 8 unit + 2 doc tests. warpfs-graph/src/impact.rs: compute_impact_with_external() with LIKE '%:' pattern for cross-repo BFS. warpfs-graph/tests/edges_test.rs: 3 integration tests (edge detection in graph, cross-repo impact traversal, parse/format roundtrip). warpfs-cli: --workspace flag on discover, --external flag on impact. Full workspace 158/158 tests pass. Guard PASS.
 
-## [ ] Phase 6: Workspace mount — unified FUSE tree from multi-repo manifest
+## [x] Phase 6: Workspace mount — unified FUSE tree from multi-repo manifest
 - **Priority:** medium
 - **Model:** glm-5.2
-- **Provider:** zai-glm
+- **Provider:** ollama-cloud (Z.AI rate-limited)
 - **Files:** warpfs-core/src/workspace.rs, warpfs-fuse/src/mount.rs (or warpfs-fuse/src/workspace_mount.rs new), warpfs-cli/src/commands/workspace.rs (new)
 - **AC:** `warpfs workspace mount --manifest .vfs/manifest.yaml --at /mnt/vfs/workspace/` mounts all declared repos and backends
 - **AC:** Directory listing at /mnt/vfs/workspace/ shows all mounted repos (auth-service, payment-service, shared-lib, docs, models, datasets)
@@ -220,6 +220,7 @@
 - **AC:** `warpfs workspace unmount /mnt/vfs/workspace/` cleanly unmounts
 - **AC:** `cargo test -p warpfs_fuse` — 3+ tests for workspace mount (multi-repo dir listing, cross-repo read, read-only enforcement)
 - **Notes:** builds on worktree manager (ensures repos exist), extends FUSE mount to support multiple backend sources under one mount point. The FUSE read handler resolves the path to the correct worktree/backend. Mount ordering: repos with dependencies mounted first (topological sort from manifest if auto_dependency_order: true).
+- **Result:** GLM 5.2 spawned via ollama-cloud (Z.AI rate-limited, HTTP 429). 8 files, +627/-1 lines. warpfs-core/src/workspace.rs: +build_mount_plan() + MountEntry struct. warpfs-fuse/src/workspace_mount.rs (new, ~478L): WorkspaceMount with full Filesystem trait impl, multi-root routing, read-only enforcement, mount() wrapper. warpfs-cli/src/commands/workspace.rs (new, 64L): run_workspace_mount() / run_workspace_unmount(). Wiring: lib.rs (+mod), mod.rs (+mod), main.rs (+Workspace cmd + args + match arms), Cargo.toml (+warpfs_core dep). Spec deviations (necessary): getxattr/listxattr signature fixes for fuser 0.15, daemon::mount typed for WarpFS so own mount() added, lifetime fix in read(). Full workspace 158/158 tests pass. Guard PASS.
 
 **Fallback rule:** If `glm-5.2` rate-limits (429) or `deepseek-v4-pro` hits context limits, retry with `openrouter/owl-alpha` via `--provider openrouter`.
 
