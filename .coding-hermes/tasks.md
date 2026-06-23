@@ -144,6 +144,18 @@
 - **Notes:** `fuser = "0.15"` already in Cargo.toml, `libfuse3-dev` installed. fuser API: implement `fuser::Filesystem` trait. Use `FileAttr`, `FileType::RegularFile`/`Directory`. Inode allocation: simple u64 counter. File content from mapped backend paths. getxattr calls warpfs_metadata::get_xattr(). For tests: mock backend with HashMap<String, Vec<u8>> file store.
 - **Result:** GLM 5.2 spawned for source, foreman fixed anyhow::Result + .gitleaks.toml regex, wrote 9 integration tests directly. warpfs-fuse: ops.rs 494 lines, daemon.rs 73 lines, permissions.rs 120 lines. warpfs-cli: mount.rs 39 lines, main.rs +5 lines, mod.rs +1 line. Full workspace 94/94 pass. Guard PASS.
 
+## [x] Phase 7: Local path backend — direct filesystem passthrough
+- **Priority:** medium
+- **Model:** deepseek-v4-pro
+- **Files:** warpfs-backends/src/local.rs
+- **AC:** `cargo build -p warpfs_backends` compiles clean
+- **AC:** `LocalBackend::mount("/tmp/test")` creates backend, `resolve("file.txt")` returns `/tmp/test/file.txt`
+- **AC:** `LocalBackend::mount("/nonexistent")` returns `LocalError::NotFound`
+- **AC:** `LocalBackend::mount()` always sets writable=true, info() reports backend="local"
+- **AC:** `cargo test -p warpfs_backends` — 4+ tests (mount valid path, mount nonexistent, resolve found/missing, info fields)
+- **Notes:** §13.1 in spec. Follow git.rs pattern: error enum, config struct, mount/resolve/info/writable/mount_point. Simpler than git — no clone/pull/checkout. Source is 1-line stub.
+- **Result:** Implemented directly by foreman (deepseek-v4-pro, model match). warpfs-backends/src/local.rs: +175 lines (LocalError, LocalBackendConfig, LocalBackend with mount/resolve/info/writable/mount_point). 6 tests: mount valid path, mount nonexistent, resolve found/missing, info fields, resolve without prefix, error display. Full workspace 164/164 pass. Guard PASS.
+
 ## Models Reference
 
 | Model | Use | Provider | Fallback |
