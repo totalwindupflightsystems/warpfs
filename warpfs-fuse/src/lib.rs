@@ -13,6 +13,7 @@ pub mod workspace_mount;
 use std::path::PathBuf;
 
 pub use ops::{InodeEntry, InodeKind, WarpFS};
+pub use warpfs_core::sandbox::BubblewrapConfig;
 
 /// FUSE mount configuration from manifest.
 #[derive(Clone)]
@@ -25,6 +26,9 @@ pub struct FuseConfig {
     pub entry_timeout: f64,
     pub max_read: u32,
     pub max_write: u32,
+    /// Bubblewrap sandbox configuration for agent isolation (§14.3).
+    /// When `Some(...)`, agent process execution is sandboxed via bwrap.
+    pub sandbox: Option<BubblewrapConfig>,
 }
 
 pub use warpfs_permissions::PermissionRule;

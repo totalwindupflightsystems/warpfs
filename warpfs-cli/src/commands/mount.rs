@@ -24,6 +24,7 @@ pub fn run_mount(mount_point: &str, triggers: bool, allow_other: bool) -> Result
         entry_timeout: 1.0,
         max_read: 131_072,
         max_write: 131_072,
+        sandbox: None,
     };
 
     let fs = WarpFS::new(current_dir, config.clone());

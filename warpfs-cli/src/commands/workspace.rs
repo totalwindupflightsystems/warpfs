@@ -46,6 +46,7 @@ pub fn run_workspace_mount(manifest_path: &str, mount_point: &str) -> Result<()>
         entry_timeout: 1.0,
         max_read: 131_072,
         max_write: 131_072,
+        sandbox: None,
     };
 
     let fs = WorkspaceMount::new(plan, config.clone());

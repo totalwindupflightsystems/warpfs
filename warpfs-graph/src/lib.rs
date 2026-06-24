@@ -7,6 +7,7 @@
 //! - `duckdb` — DuckDB convenience module and default-path constructors
 //! - `error` — error types for graph operations
 
+pub mod classify;
 pub mod duckdb;
 pub mod edges;
 pub mod error;
@@ -15,6 +16,7 @@ pub mod impact;
 pub mod parser;
 pub mod rules;
 
+pub use classify::{classify_file, Classification};
 pub use error::{GraphError, GraphResult};
 pub use graph::{Direction, GraphDB};
 pub use impact::{compute_impact, compute_impact_with_external, ImpactFile, ImpactResult};

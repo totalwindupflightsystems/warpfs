@@ -2,7 +2,7 @@ mod commands;
 
 use clap::{Parser, Subcommand};
 
-use commands::{backend, graph, init, meta, mount, serve, workspace};
+use commands::{backend, classify, graph, init, meta, mount, serve, workspace};
 
 /// WarpFS command-line interface.
 #[derive(Parser)]
@@ -31,6 +31,8 @@ enum Commands {
     /// Manage multi-repo workspace mounts.
     #[command(subcommand)]
     Workspace(WorkspaceCommand),
+    /// Auto-classify files with role/status metadata (entrypoint, test, library, etc.).
+    Classify(ClassifyArgs),
 }
 
 #[derive(clap::Args)]
@@ -157,6 +159,16 @@ struct WorkspaceUnmountArgs {
     mount_point: String,
 }
 
+#[derive(clap::Args)]
+struct ClassifyArgs {
+    /// Dry run — print classifications without writing xattrs.
+    #[arg(long)]
+    dry_run: bool,
+    /// Verbose output — show every file classification.
+    #[arg(short, long)]
+    verbose: bool,
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -192,6 +204,7 @@ fn main() {
         Commands::Workspace(WorkspaceCommand::Unmount(args)) => {
             workspace::run_workspace_unmount(&args.mount_point)
         }
+        Commands::Classify(args) => classify::run_classify(args.dry_run, args.verbose),
     };
 
     if let Err(e) = result {

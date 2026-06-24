@@ -4,8 +4,7 @@
 //! This module re-exports the public API for backward compatibility.
 
 pub use warpfs_permissions::{
-    PermissionEngine, PermissionError, PermissionOp, PermissionResult,
-    PermissionRule,
+    PermissionEngine, PermissionError, PermissionOp, PermissionResult, PermissionRule,
 };
 
 use std::path::Path;

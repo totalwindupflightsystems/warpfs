@@ -10,6 +10,7 @@ clap = { version = "4", features = ["derive"] }
 anyhow = "1"
 serde = "1"
 serde_yaml = "0.9"
+rayon = "1"
 
 # Internal crates (package names use underscores; directories use hyphens)
 warpfs_core = { path = "../warpfs-core" }

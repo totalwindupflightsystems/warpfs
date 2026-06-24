@@ -214,15 +214,33 @@ fn graph_related(arguments: &serde_json::Value) -> McpResult<serde_json::Value> 
     }
 
     let db = warpfs_graph::GraphDB::open(GRAPH_DB_PATH)?;
-
-    // Check whether the requested file exists in the graph.
-    if !db.file_in_graph(target)? {
-        return Ok(serde_json::Value::Array(vec![]));
-    }
-
     let dir = warpfs_graph::Direction::parse(direction);
 
-    let edges = db.related(target, relation, dir)?;
+    // Try exact path first, then common prefixes
+    let candidates = [
+        target.to_string(),
+        target.trim_start_matches("/home/").to_string(),
+        target.trim_start_matches("./").to_string(),
+        target.trim_start_matches('/').to_string(),
+    ];
+
+    let mut edges = Vec::new();
+    for candidate in &candidates {
+        if candidate != target || edges.is_empty() {
+            if db.file_in_graph(candidate)? {
+                edges = db.related(candidate, relation, dir)?;
+                if !edges.is_empty() {
+                    break;
+                }
+            }
+        }
+    }
+
+    // If still no edges found, try as a dependency query (package-level)
+    if edges.is_empty() {
+        edges = db.related(target, relation, dir)?;
+    }
+
     let result: Vec<serde_json::Value> = edges
         .iter()
         .map(|e| {
@@ -395,7 +413,31 @@ fn list_directory(arguments: &serde_json::Value) -> McpResult<serde_json::Value>
         .as_str()
         .ok_or_else(|| McpError::Protocol("missing path".into()))?;
     let manifest = load_manifest()?;
-    let entries = warpfs_core::virtual_dir::list_directory(&manifest, path);
+    let mut entries = warpfs_core::virtual_dir::list_directory(&manifest, path);
+
+    // Fallback: if no backends are configured, list the workspace directory
+    if entries.is_empty() && path == "/" {
+        if let Ok(cwd) = std::env::current_dir() {
+            if let Ok(dir_entries) = std::fs::read_dir(&cwd) {
+                for entry in dir_entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+                    entries.push(warpfs_core::virtual_dir::DirEntry {
+                        name,
+                        entry_type: if is_dir {
+                            "directory".to_string()
+                        } else {
+                            "file".to_string()
+                        },
+                        backend: Some("local".to_string()),
+                        size: entry.metadata().ok().map(|m| m.len()),
+                        r#virtual: false,
+                    });
+                }
+            }
+        }
+    }
+
     Ok(serde_json::json!({ "entries": entries, "total": entries.len() }))
 }
 fn resolve_path_mcp(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {

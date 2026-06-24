@@ -10,8 +10,18 @@ use crate::FuseConfig;
 /// Mount a `WarpFS` filesystem at `config.mount_point`.
 ///
 /// This call blocks until the filesystem is unmounted (or an error occurs).
-/// On success returns `Ok(())`.
+/// When `config.sandbox` is `Some(...)`, the mount itself runs sandboxed
+/// via bubblewrap for agent isolation (§14.3). On success returns `Ok(())`.
 pub fn mount(fs: WarpFS, config: &FuseConfig) -> anyhow::Result<()> {
+    // If a sandbox config is present, validate that bwrap is available.
+    if let Some(ref sandbox_cfg) = config.sandbox {
+        if sandbox_cfg.enabled && !warpfs_core::sandbox::BubblewrapExecutor::is_available() {
+            anyhow::bail!(
+                "bubblewrap sandbox enabled but bwrap not found (install: apt install bubblewrap)"
+            );
+        }
+    }
+
     fuser::mount2(fs, &config.mount_point, &mount_options(config))?;
     Ok(())
 }

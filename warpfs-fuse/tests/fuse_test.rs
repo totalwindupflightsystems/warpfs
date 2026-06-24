@@ -19,6 +19,7 @@ fn test_config(mount_point: PathBuf) -> FuseConfig {
         entry_timeout: 1.0,
         max_read: 131_072,
         max_write: 131_072,
+        sandbox: None,
     }
 }
 

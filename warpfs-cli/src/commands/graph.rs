@@ -2,8 +2,10 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Result};
+use rayon::prelude::*;
 use warpfs_graph::edges;
 use warpfs_graph::{impact, GraphDB, ImpactResult, Language, Parser};
 use warpfs_metadata::inventory::{self, Edge};
@@ -36,48 +38,65 @@ pub fn run_discover(workspace: bool) -> Result<()> {
         return Ok(());
     }
 
-    // Group files by language so we can reuse one parser per language.
-    let mut by_lang: std::collections::BTreeMap<Language, Vec<PathBuf>> =
-        std::collections::BTreeMap::new();
+    // Count languages for summary output.
+    let mut langs_seen: HashSet<Language> = HashSet::new();
     for file in &source_files {
         if let Some(ext) = file.extension().and_then(|e| e.to_str()) {
             if let Some(lang) = Language::from_extension(ext) {
-                by_lang.entry(lang).or_default().push(file.clone());
+                langs_seen.insert(lang);
             }
         }
     }
 
-    let mut all_edges: Vec<Edge> = Vec::new();
-    let mut unique_sources: HashSet<String> = HashSet::new();
+    let total_files = source_files.len();
+    let progress = AtomicUsize::new(0);
 
-    for (language, files) in &by_lang {
-        if files.is_empty() {
-            continue;
-        }
-        let lang_name = format!("{:?}", language);
-        let mut parser = Parser::for_language(*language)
-            .with_context(|| format!("failed to initialize tree-sitter {lang_name} parser"))?;
+    // Parallel parse: create a fresh parser per file since tree_sitter::Parser
+    // is not Send.  Each closure runs on a rayon thread, reads the file, and
+    // returns the parsed edges (or an empty vec on skip/error).
+    let parse_results: Vec<Result<Vec<Edge>>> = source_files
+        .par_iter()
+        .map(|file| {
+            let ext = file.extension().and_then(|e| e.to_str());
+            let lang = match ext.and_then(Language::from_extension) {
+                Some(l) => l,
+                None => return Ok(Vec::new()),
+            };
 
-        for file in files {
             let source = match std::fs::read_to_string(file) {
                 Ok(s) => s,
-                Err(_) => continue,
+                Err(_) => return Ok(Vec::new()),
             };
+
             let rel = file
                 .strip_prefix(&cwd)
                 .unwrap_or(file)
                 .to_string_lossy()
                 .into_owned();
 
-            let edges = parser
-                .parse_imports(&rel, &source)
-                .with_context(|| format!("failed to parse {rel}"))?;
+            let mut parser = Parser::for_language(lang)
+                .with_context(|| format!("failed to initialize {:?} parser", lang))?;
 
-            for e in &edges {
-                unique_sources.insert(e.from.clone());
+            let count = progress.fetch_add(1, Ordering::Relaxed) + 1;
+            if count % 100 == 0 || count == total_files {
+                eprintln!("  parsing {count}/{total_files} files...");
             }
-            all_edges.extend(edges);
+
+            parser
+                .parse_imports(&rel, &source)
+                .with_context(|| format!("failed to parse {rel}"))
+        })
+        .collect();
+
+    // Flatten results, propagating the first error.
+    let mut all_edges: Vec<Edge> = Vec::new();
+    let mut unique_sources: HashSet<String> = HashSet::new();
+    for result in parse_results {
+        let edges = result?;
+        for e in &edges {
+            unique_sources.insert(e.from.clone());
         }
+        all_edges.extend(edges);
     }
 
     // Infer `tested_by` and `tests` edges from filename conventions.
@@ -123,7 +142,7 @@ pub fn run_discover(workspace: bool) -> Result<()> {
 
     let n = all_edges.len();
     let m = unique_sources.len();
-    let langs = by_lang.len();
+    let langs = langs_seen.len();
     println!("Discovered {n} edges across {m} files ({langs} languages)");
     Ok(())
 }

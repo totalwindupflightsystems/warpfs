@@ -303,7 +303,6 @@ impl S3Client {
 mod tests {
     use super::*;
     use std::path::Path;
-    use tokio::fs;
 
     // Test: cache path computation
     fn cache_path(bucket: &str, key: &str) -> PathBuf {
