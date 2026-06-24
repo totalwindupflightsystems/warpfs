@@ -165,6 +165,71 @@
 - **Notes:** §13.1 in spec. Follow git.rs pattern: error enum, config struct, mount/resolve/info/writable/mount_point. Simpler than git — no clone/pull/checkout. Source is 1-line stub.
 - **Result:** Implemented directly by foreman (deepseek-v4-pro, model match). warpfs-backends/src/local.rs: +175 lines (LocalError, LocalBackendConfig, LocalBackend with mount/resolve/info/writable/mount_point). 6 tests: mount valid path, mount nonexistent, resolve found/missing, info fields, resolve without prefix, error display. Full workspace 164/164 pass. Guard PASS.
 
+## Phase 7: Production Hardening
+
+Phase 7: Production — scale, benchmarks, security, bubblewrap, permissions (§19 of spec).
+
+### [ ] PH7-001: cargo fmt + cargo clippy — code quality baseline
+- **Priority:** high
+- **Model:** deepseek-v4-pro (direct write — mechanical fix)
+- **Files:** all warpfs-* crates (workspace-wide)
+- **AC:** `cargo fmt --check` returns no diffs — all workspace code formatted
+- **AC:** `cargo clippy` returns no warnings (target: 0 warnings across workspace; suppress only with documented `#[allow(...)]` reasoning)
+- **AC:** `cargo clippy -- -D warnings` added to pre-commit guard expectations (§22.2)
+- **AC:** Full workspace tests pass (`cargo test --workspace`), build clean
+- **Notes:** Cargo fmt found diffs in warpfs-backends/src/git.rs (long lines). Run `cargo fmt` first, then `cargo clippy` to fix warnings. Common clippy issues: redundant closures, unnecessary borrows, manual range checks. Fix code, don't suppress unless genuinely unfixable.
+
+### [ ] PH7-002: warpfs-permissions crate — FUSE mode bit enforcement
+- **Priority:** medium
+- **Model:** deepseek-v4-pro (direct write — model match)
+- **Files:** warpfs-permissions/ (new crate), warpfs-fuse/src/ops.rs, Cargo.toml (workspace members)
+- **AC:** `cargo build -p warpfs_permissions` compiles clean
+- **AC:** `PermissionRule::apply(path)` returns `PermissionResult { mode: u32, readable: bool, writable: bool }` for paths matching globs (`.vfs/**` → 0444, `src/**` → 0644, etc.)
+- **AC:** `PermissionEngine::new()` loads rules from manifest §4 permissions block
+- **AC:** `PermissionEngine::check(path, operation)` returns Result<(), PermissionError> for Read/Write/Execute ops
+- **AC:** Wired into warpfs-fuse `Filesystem` trait — `getattr` returns correct mode bits, `open`/`write` enforces permissions
+- **AC:** `cargo test -p warpfs_permissions` — 5+ tests (glob match .vfs, glob match src, explicit deny, not-in-rules default, write denied on 0444)
+- **Spec ref:** §5 (Permission Model), §4 manifest permissions block, Cargo.toml workspaces members
+- **Notes:** Scaffold: create warpfs-permissions/ with Cargo.toml (add serde, glob as deps), add to workspace members, stub lib.rs. Existing permissions.rs in warpfs-fuse/src/ is a start — extract into this crate.
+
+### [ ] PH7-003: Bubblewrap sandboxing — agent isolation
+- **Priority:** medium
+- **Model:** deepseek-v4-pro (direct write — model match, 1-2 new files)
+- **Files:** warpfs-core/src/sandbox.rs (new), warpfs-core/src/lib.rs, warpfs-fuse/src/daemon.rs
+- **AC:** `cargo build -p warpfs_core` compiles clean
+- **AC:** `BubblewrapConfig` struct with fields: enabled, isolate_network, isolate_pid, read_only_root, writable_paths
+- **AC:** `SandboxConfig::from_manifest(manifest)` parses §14.3 sandbox block
+- **AC:** `BubblewrapExecutor::new(config).run(command)` constructs bwrap args: `--unshare-net`, `--unshare-pid`, `--ro-bind / /`, `--bind <workspace> /workspace`, `--tmpfs /tmp`
+- **AC:** Stub mode: when bubblewrap binary not found, `run()` returns `Err(SandboxError::BubblewrapNotFound)` with `which bwrap` output — no panic
+- **AC:** `cargo test -p warpfs_core` — 5+ tests (config parsing from YAML, bwrap arg construction, stub-mode error, enabled=false no-op, writable_paths filter)
+- **Spec ref:** §14 (Bubblewrap Sandboxing)
+- **Notes:** `bwrap` is NOT installed on this system — tests must handle stub mode gracefully. Do NOT require actual bwrap for tests. Use `std::process::Command` to construct the bwrap invocation; tests verify the arg vector is correct without executing.
+
+### [ ] PH7-004: Security hardening — input validation + error handling audit
+- **Priority:** medium
+- **Model:** deepseek-v4-pro (direct write — audit + mechanical fixes)
+- **Files:** warpfs-core/src/*.rs, warpfs-mcp/src/*.rs, warpfs-cli/src/commands/*.rs, warpfs-graph/src/*.rs
+- **AC:** Path traversal prevention: all user-supplied paths validated against parent (e.g., `path.starts_with(base)`, no `../` escape)
+- **AC:** Manifest validation: all `Deserialize` types reject unknown fields (`#[serde(deny_unknown_fields)]`) and validate required fields
+- **AC:** MCP tool input validation: all JSON arguments validated before execution — reject malformed `path`, `key`, `query` values with structured error
+- **AC:** Error handling: all `unwrap()`/`expect()` in non-test code replaced with proper `Result<T, E>` propagation or documented `expect("invariant: ...")` with invariant justification
+- **AC:** `cargo test --workspace` — all existing tests pass; 3+ new tests for input validation (path traversal attempt, empty key, oversized input)
+- **Notes:** This is a read-audit + patch task, not a spawn. Read each file, check for the above patterns, report findings. Only fix critical issues — do NOT refactor working code for style. `grep -rn 'unwrap()' src/ | grep -v test` to find the hot spots first.
+
+### [ ] PH7-005: Benchmark scaffolding — criterion benchmarks for critical paths
+- **Priority:** low
+- **Model:** deepseek-v4-pro (direct write — 1 file per benchmark, mechanical)
+- **Files:** warpfs-graph/benches/graph_bench.rs (new), warpfs-fuse/benches/fuse_bench.rs (new), Cargo.toml (workspace-level benchmark profile), warpfs-graph/Cargo.toml, warpfs-fuse/Cargo.toml
+- **AC:** `cargo bench -p warpfs_graph` runs edge insertion benchmark (100/1K/10K edges) and impact BFS benchmark
+- **AC:** `cargo bench -p warpfs_fuse` runs metadata retrieval benchmark (getattr, readdir, getxattr on 1K-entry directory)
+- **AC:** `cargo bench --workspace` reports results without panics or timeouts
+- **AC:** Criterion added to workspace-level `[dev-dependencies]` or crate-level; benchmarks in `benches/` directory
+- **AC:** No new code — benchmarks exercise existing APIs
+- **Spec ref:** §19 Phase 7 "Scale, benchmarks"
+- **Notes:** Criterion = `cargo add --dev criterion` to each crate. Each benchmark file: 1-3 `criterion_group!` targets. Use existing test helpers where possible. Graph benchmark: use temp DuckDB in-memory for fast iteration. FUSE benchmark: use the existing mock backend from fuse tests.
+
+---
+
 ## Models Reference
 
 | Model | Use | Provider | Fallback |
