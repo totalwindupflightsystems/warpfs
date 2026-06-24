@@ -268,14 +268,15 @@
 - **Found during:** Integration testing on sharkdp/fd project. FUSE+getfattr works by accidental double-prefix match. CLI through FUSE fails with triple-prefix.
 - **Result:** Implemented directly by foreman (deepseek-v4-pro). xattr.rs: `full_name()` now strips `user.vfs.` prefix if present (idempotent). +4 inline unit tests (no prefix, with prefix idempotent, empty name, nested prefix once-only). meta.rs: display message strips prefix for consistent output. Full workspace 228+ tests pass. Guard PASS.
 
-## [ ] Phase 5: Fix DuckDB path — graph.db vs graph.duckdb mismatch
+## [x] Phase 5: Fix DuckDB path — graph.db vs graph.duckdb mismatch
 - **Priority:** medium
 - **Model:** deepseek-v4-flash
 - **Files:** warpfs-graph/src/graph.rs, warpfs-mcp/src/tools/mod.rs
-- **AC:** `graph discover` writes to `.vfs/graph/graph.duckdb` (matches MCP expectation)
+- **AC:** `graph discover` writes to `.vfs/graph/graph.db` (matches MCP expectation)
 - **AC:** MCP `vfs_graph_stats` works after `graph discover` without manual symlink
 - **AC:** Constant `GRAPH_DB_PATH` used consistently across graph and MCP crates
 - **Notes:** `GraphDB::open` doc says `.duckdb` but code opens `.db`. MCP constant says `.duckdb` but file is `.db`. Pick one and make both crates agree. Prefer `.db` since DuckDB auto-detects format.
+- **Result:** Implemented directly by foreman. Standardized everything to `.db`: warpfs-graph/src/graph.rs (doc comments), warpfs-graph/src/duckdb.rs (open_default path), warpfs-mcp/src/tools/mod.rs (GRAPH_DB_PATH constant), warpfs-mcp/tests/mcp_test.rs (comments). Build clean, 237/237 tests pass, guard PASS.
 
 ## [ ] Phase 5: Fix graph dedup — re-running discover doubles edges
 - **Priority:** high

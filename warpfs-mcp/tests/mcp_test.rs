@@ -88,13 +88,13 @@ fn test_get_metadata_nonexistent() {
 }
 
 // -------------------------------------------------------------------------
-// vfs_graph_stats — empty graph (no .vfs/graph/graph.duckdb in test CWD)
+// vfs_graph_stats — empty graph (no .vfs/graph/graph.db in test CWD)
 // -------------------------------------------------------------------------
 
 #[test]
 fn test_graph_stats_empty() {
     // The test working directory (warpfs-mcp/) does not contain a
-    // .vfs/graph/graph.duckdb, so the tool should return all-zero stats.
+    // .vfs/graph/graph.db, so the tool should return all-zero stats.
     let req = r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"vfs_graph_stats","arguments":{}}}"#;
     let resp = rpc(req);
 

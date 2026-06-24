@@ -152,7 +152,7 @@ pub fn call_tool(name: &str, arguments: &serde_json::Value) -> McpResult<serde_j
 // ---------------------------------------------------------------------------
 
 /// Default path to the DuckDB graph database (relative to CWD).
-const GRAPH_DB_PATH: &str = ".vfs/graph/graph.duckdb";
+const GRAPH_DB_PATH: &str = ".vfs/graph/graph.db";
 
 /// Default path to the manifest file (relative to CWD).
 const MANIFEST_PATH: &str = "manifest.yaml";

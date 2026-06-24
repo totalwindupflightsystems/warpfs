@@ -1,6 +1,6 @@
 //! DuckDB graph initialization and edge querying.
 //!
-//! Creates and manages the `.vfs/graph/graph.duckdb` database for graph edge
+//! Creates and manages the `.vfs/graph/graph.db` database for graph edge
 //! storage and querying.
 
 use duckdb::{params, Connection};
@@ -8,7 +8,7 @@ use warpfs_metadata::inventory::Edge;
 
 use crate::error::GraphResult;
 
-/// Manages the DuckDB graph database at `.vfs/graph/graph.duckdb`.
+/// Manages the DuckDB graph database at `.vfs/graph/graph.db`.
 pub struct GraphDB {
     conn: Connection,
 }

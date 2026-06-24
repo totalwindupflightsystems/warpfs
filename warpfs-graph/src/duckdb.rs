@@ -5,10 +5,10 @@
 
 pub use crate::graph::{GraphDB, GraphStats};
 
-/// Create a [`GraphDB`] at the standard path `.vfs/graph/graph.duckdb`.
+/// Create a [`GraphDB`] at the standard path `.vfs/graph/graph.db`.
 ///
 /// The parent directory (`.vfs/graph`) is created if it does not already exist.
 pub fn open_default() -> crate::error::GraphResult<GraphDB> {
     std::fs::create_dir_all(".vfs/graph")?;
-    GraphDB::open(".vfs/graph/graph.duckdb")
+    GraphDB::open(".vfs/graph/graph.db")
 }
