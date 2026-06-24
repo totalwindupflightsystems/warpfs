@@ -13,11 +13,11 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fuser::{
-    FileAttr, FileType, Filesystem, KernelConfig, ReplyAttr, ReplyData, ReplyDirectory,
-    ReplyEmpty, ReplyEntry, ReplyOpen, ReplyXattr, Request,
+    FileAttr, FileType, Filesystem, KernelConfig, ReplyAttr, ReplyData, ReplyDirectory, ReplyEmpty,
+    ReplyEntry, ReplyOpen, ReplyXattr, Request,
 };
 
-use libc::{ENOENT, ENODATA};
+use libc::{ENODATA, ENOENT};
 
 use crate::FuseConfig;
 
@@ -131,11 +131,7 @@ impl WarpFS {
             let metadata = entry.metadata();
             let (kind, size, mode) = match &metadata {
                 Ok(m) if m.is_dir() => (InodeKind::Directory, 0, 0o755),
-                Ok(m) => (
-                    InodeKind::File,
-                    m.len(),
-                    0o644,
-                ),
+                Ok(m) => (InodeKind::File, m.len(), 0o644),
                 Err(_) => continue,
             };
 
@@ -162,7 +158,7 @@ impl WarpFS {
         FileAttr {
             ino,
             size: entry.size,
-            blocks: (entry.size + 511) / 512,
+            blocks: entry.size.div_ceil(512),
             atime: now,
             mtime: now,
             ctime: now,
@@ -193,11 +189,7 @@ impl WarpFS {
 // ---------------------------------------------------------------------------
 
 impl Filesystem for WarpFS {
-    fn init(
-        &mut self,
-        _req: &Request,
-        _config: &mut KernelConfig,
-    ) -> Result<(), std::ffi::c_int> {
+    fn init(&mut self, _req: &Request, _config: &mut KernelConfig) -> Result<(), std::ffi::c_int> {
         Ok(())
     }
 
@@ -272,11 +264,9 @@ impl Filesystem for WarpFS {
         }
 
         // ".." entry
-        if offset <= 2 {
-            if reply.add(1, 2, FileType::Directory, "..") {
-                reply.ok();
-                return;
-            }
+        if offset <= 2 && reply.add(1, 2, FileType::Directory, "..") {
+            reply.ok();
+            return;
         }
 
         // Collect children (sorted by name for deterministic ordering).
@@ -293,12 +283,26 @@ impl Filesystem for WarpFS {
             .filter(|(_, e)| {
                 if ino == ROOT_INO {
                     // Direct children of root have single-component relative paths.
-                    e.path.parent().map(|p| p.as_os_str().is_empty()).unwrap_or(false) && e.path != Path::new("/")
+                    e.path
+                        .parent()
+                        .map(|p| p.as_os_str().is_empty())
+                        .unwrap_or(false)
+                        && e.path != Path::new("/")
                 } else {
                     e.path.parent() == Some(&dir_entry.path)
                 }
             })
-            .map(|(i, e)| (*i, e.path.file_name().unwrap_or_default().to_string_lossy().into_owned(), e))
+            .map(|(i, e)| {
+                (
+                    *i,
+                    e.path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned(),
+                    e,
+                )
+            })
             .collect();
         children.sort_by(|a, b| a.1.cmp(&b.1));
 
@@ -355,14 +359,7 @@ impl Filesystem for WarpFS {
         reply.data(&data[offset..end]);
     }
 
-    fn getxattr(
-        &mut self,
-        _req: &Request,
-        ino: u64,
-        name: &OsStr,
-        size: u32,
-        reply: ReplyXattr,
-    ) {
+    fn getxattr(&mut self, _req: &Request, ino: u64, name: &OsStr, size: u32, reply: ReplyXattr) {
         let path = match self.resolve_path(ino) {
             Some(p) => p,
             None => {
@@ -455,7 +452,9 @@ impl Filesystem for WarpFS {
 /// when we need sub-second precision in future revisions.
 #[allow(dead_code)]
 fn _epoch_now() -> Duration {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
 }
 
 /// Helper used by tests: look up an inode by relative path.

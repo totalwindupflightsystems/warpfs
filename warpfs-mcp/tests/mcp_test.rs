@@ -60,10 +60,7 @@ fn test_tools_list() {
     }
 
     // Verify the three expected names.
-    let names: Vec<&str> = tools
-        .iter()
-        .map(|t| t["name"].as_str().unwrap())
-        .collect();
+    let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
     assert!(names.contains(&"vfs_get_metadata"));
     assert!(names.contains(&"vfs_graph_related"));
     assert!(names.contains(&"vfs_graph_stats"));
@@ -131,7 +128,10 @@ fn test_unknown_method() {
     let msg = error["message"]
         .as_str()
         .expect("error message should be a string");
-    assert!(msg.contains("frobnicate"), "message should mention the method");
+    assert!(
+        msg.contains("frobnicate"),
+        "message should mention the method"
+    );
 }
 
 // -------------------------------------------------------------------------
@@ -166,5 +166,8 @@ fn test_parse_error() {
 fn test_notification_no_response() {
     let result = handle_request(r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#);
     assert!(result.is_ok());
-    assert!(result.unwrap().is_none(), "notifications should return None");
+    assert!(
+        result.unwrap().is_none(),
+        "notifications should return None"
+    );
 }

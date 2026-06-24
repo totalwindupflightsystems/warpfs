@@ -237,18 +237,21 @@ performance:
 
 #[test]
 fn test_parse_minimal() {
-    let manifest = Manifest::from_str(MINIMAL_YAML).expect("minimal manifest should parse");
+    let manifest = Manifest::parse(MINIMAL_YAML).expect("minimal manifest should parse");
     assert_eq!(manifest.project.name, "test-project");
     assert_eq!(manifest.project.description, "");
 }
 
 #[test]
 fn test_parse_complete() {
-    let manifest = Manifest::from_str(COMPLETE_YAML).expect("complete manifest should parse");
+    let manifest = Manifest::parse(COMPLETE_YAML).expect("complete manifest should parse");
 
     // Project
     assert_eq!(manifest.project.name, "my-project");
-    assert_eq!(manifest.project.description, "Description surfaced to agents");
+    assert_eq!(
+        manifest.project.description,
+        "Description surfaced to agents"
+    );
 
     // Interfaces
     assert!(manifest.interfaces.fuse.enabled);
@@ -264,7 +267,10 @@ fn test_parse_complete() {
     assert_eq!(manifest.repos[0].name, "auth-service");
     assert_eq!(manifest.repos[0].git_ref, "main");
     assert!(manifest.repos[0].writable);
-    assert_eq!(manifest.repos[0].manifest.as_deref(), Some(".vfs/repo-manifests/auth.yaml"));
+    assert_eq!(
+        manifest.repos[0].manifest.as_deref(),
+        Some(".vfs/repo-manifests/auth.yaml")
+    );
     assert_eq!(manifest.repos[1].name, "shared-lib");
     assert_eq!(manifest.repos[1].git_ref, "v2.1.0");
     assert!(!manifest.repos[1].writable);
@@ -299,9 +305,7 @@ fn test_parse_complete() {
     assert_eq!(manifest.permissions.rules.len(), 6);
     assert_eq!(manifest.permissions.default_mode, "0644");
     assert_eq!(manifest.permissions.backends.len(), 1);
-    assert_eq!(
-        manifest.permissions.backends[0].name, "shared-lib"
-    );
+    assert_eq!(manifest.permissions.backends[0].name, "shared-lib");
 
     // Triggers — test both single-string and list `on` forms
     assert_eq!(manifest.triggers.len(), 4);
@@ -313,7 +317,12 @@ fn test_parse_complete() {
     assert_eq!(manifest.triggers[1].on_failure.as_deref(), Some("warn"));
     assert_eq!(manifest.triggers[2].name, "auto-test");
     assert_eq!(
-        manifest.triggers[2].on_success.as_ref().unwrap().set_xattr.as_deref(),
+        manifest.triggers[2]
+            .on_success
+            .as_ref()
+            .unwrap()
+            .set_xattr
+            .as_deref(),
         Some("user.vfs.last_tested={{ .Timestamp }}")
     );
 
@@ -325,7 +334,15 @@ fn test_parse_complete() {
     // Plugins
     assert_eq!(manifest.plugins.len(), 1);
     assert_eq!(manifest.plugins[0].hooks[0].priority, 10);
-    assert_eq!(manifest.plugins[0].provides.as_ref().unwrap().edge_types.len(), 2);
+    assert_eq!(
+        manifest.plugins[0]
+            .provides
+            .as_ref()
+            .unwrap()
+            .edge_types
+            .len(),
+        2
+    );
 
     // Discovery
     assert!(manifest.discovery.feature_inference.enabled);
@@ -333,11 +350,15 @@ fn test_parse_complete() {
     assert_eq!(manifest.discovery.test_association.patterns.len(), 4);
     assert_eq!(manifest.discovery.generated_detection.markers.len(), 5);
     assert_eq!(
-        manifest.discovery.generated_detection.markers[0].header.as_deref(),
+        manifest.discovery.generated_detection.markers[0]
+            .header
+            .as_deref(),
         Some("DO NOT EDIT")
     );
     assert_eq!(
-        manifest.discovery.generated_detection.markers[3].path.as_deref(),
+        manifest.discovery.generated_detection.markers[3]
+            .path
+            .as_deref(),
         Some("*.pb.go")
     );
 
@@ -362,7 +383,7 @@ project:
   name: "test"
 completely_unknown_key: "should fail"
 "#;
-    let result = Manifest::from_str(yaml);
+    let result = Manifest::parse(yaml);
     assert!(result.is_err(), "unknown top-level key must be rejected");
 }
 
@@ -375,13 +396,13 @@ interfaces:
   fuse:
     bogus_field: true
 "#;
-    let result = Manifest::from_str(yaml);
+    let result = Manifest::parse(yaml);
     assert!(result.is_err(), "unknown nested key must be rejected");
 }
 
 #[test]
 fn test_defaults_applied() {
-    let manifest = Manifest::from_str(MINIMAL_YAML).expect("minimal should parse");
+    let manifest = Manifest::parse(MINIMAL_YAML).expect("minimal should parse");
 
     // Version defaults to 2
     assert_eq!(manifest.version, 2);
@@ -456,7 +477,7 @@ fn test_defaults_applied() {
 
 #[test]
 fn test_version_defaults_to_2() {
-    let manifest = Manifest::from_str(MINIMAL_YAML).expect("should parse");
+    let manifest = Manifest::parse(MINIMAL_YAML).expect("should parse");
     assert_eq!(manifest.version, 2);
 }
 
@@ -467,7 +488,7 @@ version: 3
 project:
   name: "v3-project"
 "#;
-    let manifest = Manifest::from_str(yaml).expect("should parse");
+    let manifest = Manifest::parse(yaml).expect("should parse");
     assert_eq!(manifest.version, 3);
 }
 
@@ -490,8 +511,8 @@ fn test_config_from_file() {
     std::fs::write(&path, COMPLETE_YAML).expect("failed to write file");
 
     let path_str = path.to_str().expect("path is valid utf-8");
-    let config = warpfs_core::config::Config::from_file(path_str)
-        .expect("config should parse from file");
+    let config =
+        warpfs_core::config::Config::from_file(path_str).expect("config should parse from file");
     assert_eq!(config.manifest.project.name, "my-project");
 }
 
@@ -508,7 +529,7 @@ discovery:
       - path: "*.gen.go"
       - header: "auto-generated"
 "#;
-    let manifest = Manifest::from_str(yaml).expect("should parse");
+    let manifest = Manifest::parse(yaml).expect("should parse");
     let markers = &manifest.discovery.generated_detection.markers;
     assert_eq!(markers.len(), 3);
     assert!(markers[0].header.is_some());

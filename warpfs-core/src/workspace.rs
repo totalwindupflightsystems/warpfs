@@ -102,7 +102,7 @@ impl WorkspaceManifest {
     }
 
     /// Parse from a YAML string.
-    pub fn from_str(yaml: &str) -> Result<Self, WorkspaceError> {
+    pub fn parse(yaml: &str) -> Result<Self, WorkspaceError> {
         Ok(serde_yaml::from_str(yaml)?)
     }
 
@@ -223,9 +223,12 @@ impl WorkspaceManifest {
             if let Some(repo) = self.repos.iter().find(|r| r.name == mount.source) {
                 let path = mgr
                     .ensure(&repo.name, &repo.url, &repo.r#ref)
-                    .map_err(|e| WorkspaceError::Validation(format!(
-                        "failed to ensure worktree for {}: {}", repo.name, e
-                    )))?;
+                    .map_err(|e| {
+                        WorkspaceError::Validation(format!(
+                            "failed to ensure worktree for {}: {}",
+                            repo.name, e
+                        ))
+                    })?;
                 entries.push(MountEntry {
                     name: mount.source.clone(),
                     backing_path: path,
@@ -294,14 +297,11 @@ mounts:
   - source: models
     at: /mnt/vfs/models/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
 
         assert_eq!(manifest.repos.len(), 2);
         assert_eq!(manifest.repos[0].name, "auth-service");
-        assert_eq!(
-            manifest.repos[0].url,
-            "git@github.com:org/auth-service.git"
-        );
+        assert_eq!(manifest.repos[0].url, "git@github.com:org/auth-service.git");
         assert_eq!(manifest.repos[0].r#ref, "main");
         assert!(manifest.repos[0].writable);
         assert_eq!(manifest.repos[0].auto_pull, Some(3600));
@@ -322,7 +322,7 @@ mounts:
     #[test]
     fn test_from_str_minimal() {
         let yaml = "repos: []\nbackends: []\nmounts: []\n";
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         assert!(manifest.repos.is_empty());
         assert!(manifest.backends.is_empty());
         assert!(manifest.mounts.is_empty());
@@ -331,7 +331,7 @@ mounts:
     #[test]
     fn test_from_str_empty() {
         let yaml = "";
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         assert!(manifest.repos.is_empty());
         assert!(manifest.backends.is_empty());
         assert!(manifest.mounts.is_empty());
@@ -340,9 +340,12 @@ mounts:
     #[test]
     fn test_from_str_invalid_yaml() {
         let yaml = "repos: [broken";
-        let err = WorkspaceManifest::from_str(yaml).unwrap_err();
+        let err = WorkspaceManifest::parse(yaml).unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("Parse error"), "expected Parse error, got: {msg}");
+        assert!(
+            msg.contains("Parse error"),
+            "expected Parse error, got: {msg}"
+        );
     }
 
     #[test]
@@ -354,11 +357,15 @@ repos:
     url: ""
     ref: ""
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
         assert!(!errors.is_empty(), "expected validation errors");
         // Empty name, empty url, empty ref = at least 3 errors
-        assert!(errors.len() >= 3, "expected >= 3 errors, got {}", errors.len());
+        assert!(
+            errors.len() >= 3,
+            "expected >= 3 errors, got {}",
+            errors.len()
+        );
     }
 
     #[test]
@@ -372,10 +379,13 @@ repos:
     url: git@github.com:a/c.git
     ref: develop
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
         assert!(!errors.is_empty());
-        let dup_errors: Vec<_> = errors.iter().filter(|e| e.message.contains("duplicate")).collect();
+        let dup_errors: Vec<_> = errors
+            .iter()
+            .filter(|e| e.message.contains("duplicate"))
+            .collect();
         assert!(!dup_errors.is_empty(), "expected duplicate repo error");
     }
 
@@ -388,10 +398,12 @@ backends:
     config: {}
     mount_point: /bad/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
         assert!(!errors.is_empty());
-        assert!(errors.iter().any(|e| e.field.contains("backends") && e.message.contains("ftp")));
+        assert!(errors
+            .iter()
+            .any(|e| e.field.contains("backends") && e.message.contains("ftp")));
     }
 
     #[test]
@@ -401,10 +413,12 @@ mounts:
   - source: nonexistent-repo
     at: /mnt/vfs/somewhere/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
         assert!(!errors.is_empty());
-        assert!(errors.iter().any(|e| e.message.contains("does not reference")));
+        assert!(errors
+            .iter()
+            .any(|e| e.message.contains("does not reference")));
     }
 
     #[test]
@@ -420,10 +434,16 @@ mounts:
   - source: repo-a
     at: /same/path/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
-        let dup_mounts: Vec<_> = errors.iter().filter(|e| e.message.contains("duplicate mount")).collect();
-        assert!(!dup_mounts.is_empty(), "expected duplicate mount point error");
+        let dup_mounts: Vec<_> = errors
+            .iter()
+            .filter(|e| e.message.contains("duplicate mount"))
+            .collect();
+        assert!(
+            !dup_mounts.is_empty(),
+            "expected duplicate mount point error"
+        );
     }
 
     #[test]
@@ -437,7 +457,7 @@ mounts:
   - source: my-repo
     at: /mnt/vfs/my-repo/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
         assert!(errors.is_empty(), "expected no errors, got {:?}", errors);
     }
@@ -455,7 +475,7 @@ mounts:
   - source: my-bucket
     at: /mnt/vfs/data/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
         assert!(errors.is_empty(), "expected no errors, got {:?}", errors);
     }
@@ -494,7 +514,7 @@ repos:
     ref: main
     extra_unknown_field: should_fail
 "#;
-        let err = WorkspaceManifest::from_str(yaml).unwrap_err();
+        let err = WorkspaceManifest::parse(yaml).unwrap_err();
         let msg = err.to_string();
         assert!(
             msg.contains("unknown field") || msg.contains("extra_unknown_field"),
@@ -515,9 +535,12 @@ backends:
     config: {}
     mount_point: /b/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
-        let dup: Vec<_> = errors.iter().filter(|e| e.message.contains("duplicate")).collect();
+        let dup: Vec<_> = errors
+            .iter()
+            .filter(|e| e.message.contains("duplicate"))
+            .collect();
         assert!(!dup.is_empty(), "expected duplicate backend error");
     }
 
@@ -530,9 +553,11 @@ backends:
     config: {}
     mount_point: ""
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
-        assert!(errors.iter().any(|e| e.field.contains("mount_point") && e.message.contains("empty")));
+        assert!(errors
+            .iter()
+            .any(|e| e.field.contains("mount_point") && e.message.contains("empty")));
     }
 
     #[test]
@@ -542,7 +567,7 @@ mounts:
   - source: ""
     at: /some/path/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
         assert!(errors.iter().any(|e| e.message.contains("source")));
     }
@@ -558,7 +583,7 @@ mounts:
   - source: r
     at: ""
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         let errors = manifest.validate();
         assert!(errors.iter().any(|e| e.message.contains("mount path")));
     }
@@ -600,11 +625,15 @@ mounts:
   - source: local-data
     at: /mnt/vfs/datasets/
 "#;
-        let manifest = WorkspaceManifest::from_str(yaml).unwrap();
+        let manifest = WorkspaceManifest::parse(yaml).unwrap();
         assert_eq!(manifest.repos.len(), 2);
         assert_eq!(manifest.backends.len(), 3);
         assert_eq!(manifest.mounts.len(), 3);
         let errors = manifest.validate();
-        assert!(errors.is_empty(), "expected no validation errors, got {:?}", errors);
+        assert!(
+            errors.is_empty(),
+            "expected no validation errors, got {:?}",
+            errors
+        );
     }
 }

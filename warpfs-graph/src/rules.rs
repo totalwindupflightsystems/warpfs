@@ -118,10 +118,7 @@ impl RuleEngine {
     /// Execute multiple rules and collect results (successes and failures).
     ///
     /// Useful for bulk operations where partial failures are acceptable.
-    pub fn check_all(
-        conn: &Connection,
-        rules: &[Rule],
-    ) -> Vec<Result<RuleCheckResult, RuleError>> {
+    pub fn check_all(conn: &Connection, rules: &[Rule]) -> Vec<Result<RuleCheckResult, RuleError>> {
         rules.iter().map(|r| Self::check(conn, r)).collect()
     }
 }
@@ -199,8 +196,7 @@ mod tests {
         let err = RuleEngine::check(&conn, &rule).unwrap_err();
         assert_eq!(err.rule, "bad_sql");
         assert!(
-            err.error.contains("SQL parse error")
-                || err.error.contains("Query execution error")
+            err.error.contains("SQL parse error") || err.error.contains("Query execution error")
         );
     }
 
@@ -215,8 +211,7 @@ mod tests {
         let err = RuleEngine::check(&conn, &rule).unwrap_err();
         assert_eq!(err.rule, "no_table");
         assert!(
-            err.error.contains("Query execution error")
-                || err.error.contains("SQL parse error"),
+            err.error.contains("Query execution error") || err.error.contains("SQL parse error"),
             "Expected execution or parse error, got: {}",
             err.error
         );
@@ -228,8 +223,7 @@ mod tests {
         let rule = Rule {
             name: "count_by_rel".into(),
             description: "Count edges by relation type".into(),
-            query: "SELECT rel, COUNT(*) AS cnt FROM edges GROUP BY rel ORDER BY cnt DESC"
-                .into(),
+            query: "SELECT rel, COUNT(*) AS cnt FROM edges GROUP BY rel ORDER BY cnt DESC".into(),
         };
         let result = RuleEngine::check(&conn, &rule).unwrap();
         assert_eq!(result.total, 2);

@@ -38,9 +38,7 @@ impl LocalBackend {
             .real_path
             .canonicalize()
             .map_err(|e| match e.kind() {
-                std::io::ErrorKind::NotFound => {
-                    LocalError::NotFound(config.real_path.clone())
-                }
+                std::io::ErrorKind::NotFound => LocalError::NotFound(config.real_path.clone()),
                 _ => LocalError::Io(e),
             })?;
 

@@ -63,20 +63,14 @@ pub fn handle_request(line: &str) -> McpResult<Option<serde_json::Value>> {
     };
 
     // --- Extract id / method / params --------------------------------
-    let id = parsed
-        .get("id")
-        .cloned()
-        .unwrap_or(serde_json::Value::Null);
+    let id = parsed.get("id").cloned().unwrap_or(serde_json::Value::Null);
 
     // Notifications (no id) get no response.
     if id.is_null() {
         return Ok(None);
     }
 
-    let method = parsed
-        .get("method")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let method = parsed.get("method").and_then(|v| v.as_str()).unwrap_or("");
 
     let params = parsed
         .get("params")

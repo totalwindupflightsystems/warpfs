@@ -42,7 +42,9 @@ impl Language {
 
     /// All extensions this parser handles.
     pub fn all_extensions() -> &'static [&'static str] {
-        &["go", "py", "ts", "tsx", "rs", "js", "jsx", "java", "c", "cpp", "cc", "cxx", "rb"]
+        &[
+            "go", "py", "ts", "tsx", "rs", "js", "jsx", "java", "c", "cpp", "cc", "cxx", "rb",
+        ]
     }
 }
 
@@ -90,13 +92,17 @@ impl Parser {
         let mut paths: Vec<String> = Vec::new();
         match self.language {
             Language::Go => extract_go_imports(tree.root_node(), source.as_bytes(), &mut paths),
-            Language::Python => extract_python_imports(tree.root_node(), source.as_bytes(), &mut paths),
+            Language::Python => {
+                extract_python_imports(tree.root_node(), source.as_bytes(), &mut paths)
+            }
             Language::TypeScript | Language::JavaScript => {
                 extract_js_imports(tree.root_node(), source.as_bytes(), &mut paths);
             }
             Language::Rust => extract_rust_imports(tree.root_node(), source.as_bytes(), &mut paths),
             Language::Java => extract_java_imports(tree.root_node(), source.as_bytes(), &mut paths),
-            Language::C | Language::Cpp => extract_c_imports(tree.root_node(), source.as_bytes(), &mut paths),
+            Language::C | Language::Cpp => {
+                extract_c_imports(tree.root_node(), source.as_bytes(), &mut paths)
+            }
             Language::Ruby => extract_ruby_imports(tree.root_node(), source.as_bytes(), &mut paths),
         }
 
@@ -127,12 +133,21 @@ fn extract_go_imports(node: Node, source: &[u8], paths: &mut Vec<String>) {
         }
         return;
     }
-    let children: Vec<Node> = { let mut c = node.walk(); node.children(&mut c).collect() };
-    for child in children { extract_go_imports(child, source, paths); }
+    let children: Vec<Node> = {
+        let mut c = node.walk();
+        node.children(&mut c).collect()
+    };
+    for child in children {
+        extract_go_imports(child, source, paths);
+    }
 }
 
 fn classify_go(path: &str) -> String {
-    if path.contains('.') { format!("pkg:{path}") } else { format!("std:{path}") }
+    if path.contains('.') {
+        format!("pkg:{path}")
+    } else {
+        format!("std:{path}")
+    }
 }
 
 // ── Python ──────────────────────────────────────────────────────────
@@ -142,19 +157,27 @@ fn extract_python_imports(node: Node, source: &[u8], paths: &mut Vec<String>) {
         "import_statement" | "import_from_statement" => {
             let text = node.utf8_text(source).unwrap_or("");
             let module = text
-                .strip_prefix("import ").or_else(|| text.strip_prefix("from "))
+                .strip_prefix("import ")
+                .or_else(|| text.strip_prefix("from "))
                 .unwrap_or(text)
                 .split_whitespace()
                 .next()
                 .unwrap_or("")
                 .trim_matches('"');
-            if !module.is_empty() { paths.push(format!("pkg:{module}")); }
+            if !module.is_empty() {
+                paths.push(format!("pkg:{module}"));
+            }
             return;
         }
         _ => {}
     }
-    let children: Vec<Node> = { let mut c = node.walk(); node.children(&mut c).collect() };
-    for child in children { extract_python_imports(child, source, paths); }
+    let children: Vec<Node> = {
+        let mut c = node.walk();
+        node.children(&mut c).collect()
+    };
+    for child in children {
+        extract_python_imports(child, source, paths);
+    }
 }
 
 // ── JavaScript / TypeScript ─────────────────────────────────────────
@@ -176,15 +199,25 @@ fn extract_js_imports(node: Node, source: &[u8], paths: &mut Vec<String>) {
     if node.kind() == "call_expression" {
         let text = node.utf8_text(source).unwrap_or("");
         if text.starts_with("require(") {
-            if let Some(arg) = text.strip_prefix("require(").and_then(|s| s.strip_suffix(")")) {
+            if let Some(arg) = text
+                .strip_prefix("require(")
+                .and_then(|s| s.strip_suffix(")"))
+            {
                 let cleaned = arg.trim().trim_matches('"').trim_matches('\'');
-                if !cleaned.is_empty() { paths.push(classify_js(cleaned)); }
+                if !cleaned.is_empty() {
+                    paths.push(classify_js(cleaned));
+                }
             }
         }
         return;
     }
-    let children: Vec<Node> = { let mut c = node.walk(); node.children(&mut c).collect() };
-    for child in children { extract_js_imports(child, source, paths); }
+    let children: Vec<Node> = {
+        let mut c = node.walk();
+        node.children(&mut c).collect()
+    };
+    for child in children {
+        extract_js_imports(child, source, paths);
+    }
 }
 
 fn classify_js(path: &str) -> String {
@@ -212,12 +245,19 @@ fn extract_rust_imports(node: Node, source: &[u8], paths: &mut Vec<String>) {
         let text = node.utf8_text(source).unwrap_or("");
         if let Some(name) = text.strip_prefix("extern crate ") {
             let cleaned = name.trim().trim_matches(';');
-            if !cleaned.is_empty() { paths.push(format!("pkg:{cleaned}")); }
+            if !cleaned.is_empty() {
+                paths.push(format!("pkg:{cleaned}"));
+            }
         }
         return;
     }
-    let children: Vec<Node> = { let mut c = node.walk(); node.children(&mut c).collect() };
-    for child in children { extract_rust_imports(child, source, paths); }
+    let children: Vec<Node> = {
+        let mut c = node.walk();
+        node.children(&mut c).collect()
+    };
+    for child in children {
+        extract_rust_imports(child, source, paths);
+    }
 }
 
 // ── Java ────────────────────────────────────────────────────────────
@@ -226,14 +266,22 @@ fn extract_java_imports(node: Node, source: &[u8], paths: &mut Vec<String>) {
     if node.kind() == "import_declaration" {
         let text = node.utf8_text(source).unwrap_or("");
         let path = text
-            .strip_prefix("import ").unwrap_or(text)
+            .strip_prefix("import ")
+            .unwrap_or(text)
             .trim_end_matches(';')
             .trim();
-        if !path.is_empty() { paths.push(format!("pkg:{path}")); }
+        if !path.is_empty() {
+            paths.push(format!("pkg:{path}"));
+        }
         return;
     }
-    let children: Vec<Node> = { let mut c = node.walk(); node.children(&mut c).collect() };
-    for child in children { extract_java_imports(child, source, paths); }
+    let children: Vec<Node> = {
+        let mut c = node.walk();
+        node.children(&mut c).collect()
+    };
+    for child in children {
+        extract_java_imports(child, source, paths);
+    }
 }
 
 // ── C / C++ ─────────────────────────────────────────────────────────
@@ -242,17 +290,25 @@ fn extract_c_imports(node: Node, source: &[u8], paths: &mut Vec<String>) {
     if node.kind() == "preproc_include" {
         let text = node.utf8_text(source).unwrap_or("");
         let cleaned = text
-            .strip_prefix("#include").unwrap_or(text)
+            .strip_prefix("#include")
+            .unwrap_or(text)
             .trim()
             .trim_matches('"')
             .trim_matches('<')
             .trim_matches('>');
         let prefix = if text.contains('"') { "local" } else { "sys" };
-        if !cleaned.is_empty() { paths.push(format!("{prefix}:{cleaned}")); }
+        if !cleaned.is_empty() {
+            paths.push(format!("{prefix}:{cleaned}"));
+        }
         return;
     }
-    let children: Vec<Node> = { let mut c = node.walk(); node.children(&mut c).collect() };
-    for child in children { extract_c_imports(child, source, paths); }
+    let children: Vec<Node> = {
+        let mut c = node.walk();
+        node.children(&mut c).collect()
+    };
+    for child in children {
+        extract_c_imports(child, source, paths);
+    }
 }
 
 // ── Ruby ────────────────────────────────────────────────────────────
@@ -261,12 +317,24 @@ fn extract_ruby_imports(node: Node, source: &[u8], paths: &mut Vec<String>) {
     if node.kind() == "call" {
         let text = node.utf8_text(source).unwrap_or("");
         if text.starts_with("require ") {
-            let cleaned = text.strip_prefix("require ").unwrap_or("").trim().trim_matches('"').trim_matches('\'');
-            if !cleaned.is_empty() { paths.push(format!("pkg:{cleaned}")); }
+            let cleaned = text
+                .strip_prefix("require ")
+                .unwrap_or("")
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'');
+            if !cleaned.is_empty() {
+                paths.push(format!("pkg:{cleaned}"));
+            }
         }
     }
-    let children: Vec<Node> = { let mut c = node.walk(); node.children(&mut c).collect() };
-    for child in children { extract_ruby_imports(child, source, paths); }
+    let children: Vec<Node> = {
+        let mut c = node.walk();
+        node.children(&mut c).collect()
+    };
+    for child in children {
+        extract_ruby_imports(child, source, paths);
+    }
 }
 
 #[cfg(test)]
@@ -297,28 +365,40 @@ mod tests {
 
     #[test]
     fn python_imports() {
-        let imports = parse(Language::Python, "import os\nfrom collections import defaultdict");
+        let imports = parse(
+            Language::Python,
+            "import os\nfrom collections import defaultdict",
+        );
         assert!(imports.contains(&"pkg:os".into()));
         assert!(imports.contains(&"pkg:collections".into()));
     }
 
     #[test]
     fn ts_imports() {
-        let imports = parse(Language::TypeScript, "import { foo } from './utils';\nimport express from 'express';");
+        let imports = parse(
+            Language::TypeScript,
+            "import { foo } from './utils';\nimport express from 'express';",
+        );
         assert!(imports.contains(&"local:./utils".into()));
         assert!(imports.contains(&"pkg:express".into()));
     }
 
     #[test]
     fn rust_imports() {
-        let imports = parse(Language::Rust, "use std::collections::HashMap;\nuse serde::Serialize;");
+        let imports = parse(
+            Language::Rust,
+            "use std::collections::HashMap;\nuse serde::Serialize;",
+        );
         assert!(imports.contains(&"pkg:std".into()));
         assert!(imports.contains(&"pkg:serde".into()));
     }
 
     #[test]
     fn java_imports() {
-        let imports = parse(Language::Java, "import java.util.List;\nimport com.foo.Bar;");
+        let imports = parse(
+            Language::Java,
+            "import java.util.List;\nimport com.foo.Bar;",
+        );
         assert!(imports.contains(&"pkg:java.util.List".into()));
         assert!(imports.contains(&"pkg:com.foo.Bar".into()));
     }

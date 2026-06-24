@@ -42,11 +42,11 @@ impl HostFunctions {
     pub fn call_host_function(&mut self, name: &str, args: &[String]) -> Result<String, String> {
         match name {
             "get_file_content" => {
-                let path = args.get(0).ok_or("get_file_content: missing path")?;
+                let path = args.first().ok_or("get_file_content: missing path")?;
                 Ok(self.file_store.get(path).cloned().unwrap_or_default())
             }
             "get_xattr" => {
-                let path = args.get(0).ok_or("get_xattr: missing path")?;
+                let path = args.first().ok_or("get_xattr: missing path")?;
                 let key = args.get(1).ok_or("get_xattr: missing key")?;
                 Ok(self
                     .xattr_store
@@ -55,7 +55,7 @@ impl HostFunctions {
                     .unwrap_or_default())
             }
             "set_xattr" => {
-                let path = args.get(0).ok_or("set_xattr: missing path")?;
+                let path = args.first().ok_or("set_xattr: missing path")?;
                 let key = args.get(1).ok_or("set_xattr: missing key")?;
                 let value = args.get(2).ok_or("set_xattr: missing value")?;
                 self.xattr_store
@@ -63,7 +63,7 @@ impl HostFunctions {
                 Ok("ok".into())
             }
             "add_edge" => {
-                let from = args.get(0).ok_or("add_edge: missing from")?;
+                let from = args.first().ok_or("add_edge: missing from")?;
                 let to = args.get(1).ok_or("add_edge: missing to")?;
                 let relation = args.get(2).ok_or("add_edge: missing relation")?;
                 self.edges
@@ -75,7 +75,7 @@ impl HostFunctions {
                 Ok("[]".into())
             }
             "emit_warning" => {
-                let path = args.get(0).ok_or("emit_warning: missing path")?;
+                let path = args.first().ok_or("emit_warning: missing path")?;
                 let message = args.get(1).ok_or("emit_warning: missing message")?;
                 self.warnings.push((path.clone(), message.clone()));
                 Ok("ok".into())

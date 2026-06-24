@@ -30,9 +30,8 @@ pub fn format_external_edge(repo: &str, path: &str) -> String {
 /// ```
 pub fn parse_external_edge(to: &str) -> Option<(&str, &str)> {
     let rest = to.strip_prefix("external:")?;
-    let mut parts = rest.splitn(2, ':');
-    let repo = parts.next()?;
-    let path = parts.next()?;
+    let (repo, path) = rest.split_once(':')?;
+
     Some((repo, path))
 }
 
@@ -86,7 +85,7 @@ pub fn build_repo_mounts(pairs: &[(String, String)]) -> HashMap<String, String> 
 
 /// Resolve the set of known local files from a list of edges, building a
 /// `HashSet<&str>` of `to` values that are NOT external.
-pub fn local_target_set<'a>(edges: &'a [warpfs_metadata::inventory::Edge]) -> HashSet<&'a str> {
+pub fn local_target_set(edges: &[warpfs_metadata::inventory::Edge]) -> HashSet<&str> {
     edges.iter().map(|e| e.to.as_str()).collect()
 }
 

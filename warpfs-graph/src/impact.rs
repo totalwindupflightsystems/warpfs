@@ -34,7 +34,11 @@ pub struct ImpactResult {
 /// Uses BFS with a visited set to protect against circular imports.
 /// Returns files ordered by discovery (BFS order) — direct dependents first,
 /// then 2-hop, etc.
-pub fn compute_impact(conn: &Connection, start_path: &str, max_depth: u32) -> GraphResult<Vec<ImpactFile>> {
+pub fn compute_impact(
+    conn: &Connection,
+    start_path: &str,
+    max_depth: u32,
+) -> GraphResult<Vec<ImpactFile>> {
     if max_depth == 0 {
         return Ok(Vec::new());
     }
@@ -101,9 +105,8 @@ pub fn compute_impact_with_external(
     if include_external {
         // Match edges where `to` ends with `:path` (the external edge format
         // is `external:repo-name:path`).
-        ext_stmt = Some(conn.prepare(
-            r#"SELECT "from", rel FROM edges WHERE "to" LIKE '%:' || ?"#,
-        )?);
+        ext_stmt =
+            Some(conn.prepare(r#"SELECT "from", rel FROM edges WHERE "to" LIKE '%:' || ?"#)?);
     }
 
     while let Some((path, depth)) = queue.pop_front() {

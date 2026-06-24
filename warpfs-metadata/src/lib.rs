@@ -1,15 +1,14 @@
 // WarpFS metadata engine — xattr read/write and inventory file I/O.
 // See specs/warpfs-spec.md §15-16, §18.1.
 
-pub mod xattr;
 pub mod inventory;
+pub mod xattr;
 
-pub use xattr::{set_vfs_xattr, get_vfs_xattr, list_vfs_xattrs, remove_vfs_xattr};
 pub use inventory::{
-    Edge, BackendMount,
-    create_vfs_structure, append_edge, append_edges, append_edges_deduped,
-    read_mounts, write_mounts, edge_to_jsonl,
+    append_edge, append_edges, append_edges_deduped, create_vfs_structure, edge_to_jsonl,
+    read_mounts, write_mounts, BackendMount, Edge,
 };
+pub use xattr::{get_vfs_xattr, list_vfs_xattrs, remove_vfs_xattr, set_vfs_xattr};
 
 /// Errors that can arise during metadata operations.
 #[derive(Debug, thiserror::Error)]

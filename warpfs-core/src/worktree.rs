@@ -297,7 +297,11 @@ mod tests {
         let mgr = WorktreeManager::with_base_dir(tmp.path().to_path_buf()).unwrap();
         mgr.ensure("stale-repo", &url, "main").unwrap();
         // Make FETCH_HEAD look old using filetime.
-        let fetch_head = tmp.path().join("stale-repo").join(".git").join("FETCH_HEAD");
+        let fetch_head = tmp
+            .path()
+            .join("stale-repo")
+            .join(".git")
+            .join("FETCH_HEAD");
         if fetch_head.exists() {
             let two_hours_ago = SystemTime::now() - std::time::Duration::from_secs(7200);
             filetime::set_file_mtime(&fetch_head, two_hours_ago.into()).unwrap();
@@ -373,13 +377,7 @@ mod tests {
             .output()
             .unwrap();
         Command::new("git")
-            .args([
-                "-C",
-                work.to_str().unwrap(),
-                "commit",
-                "-m",
-                "v1 commit",
-            ])
+            .args(["-C", work.to_str().unwrap(), "commit", "-m", "v1 commit"])
             .output()
             .unwrap();
         Command::new("git")

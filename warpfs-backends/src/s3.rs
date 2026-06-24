@@ -1,7 +1,7 @@
 // S3 read-only + write-through backend implementation
-use aws_sdk_s3 as s3;
 use aws_config;
-use sha2::{Sha256, Digest};
+use aws_sdk_s3 as s3;
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::fs;
@@ -47,7 +47,7 @@ struct CacheMeta {
     pub etag: Option<String>,
     pub content_type: Option<String>,
     pub content_length: i64,
-    pub cached_at: u64,   // UNIX epoch seconds
+    pub cached_at: u64, // UNIX epoch seconds
 }
 
 /// Result of a write-through put_object operation.
@@ -82,8 +82,13 @@ impl S3Client {
     /// Create a new S3 client for a specific bucket/prefix.
     /// cache_dir: local directory for cached files (e.g., .vfs/cache/)
     /// ttl_seconds: cache TTL; 0 means never expire
-    pub async fn new(region: &str, cache_dir: &Path, ttl_seconds: u32, writable: bool) -> S3Result<Self> {
-        let config = aws_config::from_env()
+    pub async fn new(
+        region: &str,
+        cache_dir: &Path,
+        ttl_seconds: u32,
+        writable: bool,
+    ) -> S3Result<Self> {
+        let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
             .region(s3::config::Region::new(region.to_string()))
             .load()
             .await;
@@ -106,7 +111,8 @@ impl S3Client {
         }
 
         // 2. Fetch from S3
-        let resp = self.client
+        let resp = self
+            .client
             .get_object()
             .bucket(bucket)
             .key(key)
@@ -121,7 +127,11 @@ impl S3Client {
             })?;
 
         // 3. Collect bytes
-        let body = resp.body.collect().await.map_err(|e| S3Error::Aws(e.to_string()))?;
+        let body = resp
+            .body
+            .collect()
+            .await
+            .map_err(|e| S3Error::Aws(e.to_string()))?;
         let bytes = body.into_bytes();
 
         // 4. Ensure cache directory exists
@@ -152,14 +162,16 @@ impl S3Client {
 
     /// List objects in S3 under the given prefix.
     pub async fn list_objects(&self, bucket: &str, prefix: &str) -> S3Result<Vec<String>> {
-        let resp = self.client
+        let resp = self
+            .client
             .list_objects_v2()
             .bucket(bucket)
             .prefix(prefix)
             .send()
             .await?;
 
-        let keys: Vec<String> = resp.contents()
+        let keys: Vec<String> = resp
+            .contents()
             .iter()
             .filter_map(|obj| obj.key().map(|k| k.to_string()))
             .collect();
@@ -268,17 +280,13 @@ impl S3Client {
         }
 
         match cache_path.metadata() {
-            Ok(meta) => {
-                match meta.modified() {
-                    Ok(mtime) => {
-                        let elapsed = SystemTime::now()
-                            .duration_since(mtime)
-                            .unwrap_or_default();
-                        elapsed.as_secs() < self.ttl_seconds as u64
-                    }
-                    Err(_) => false,
+            Ok(meta) => match meta.modified() {
+                Ok(mtime) => {
+                    let elapsed = SystemTime::now().duration_since(mtime).unwrap_or_default();
+                    elapsed.as_secs() < self.ttl_seconds as u64
                 }
-            }
+                Err(_) => false,
+            },
             Err(_) => false,
         }
     }
@@ -299,7 +307,9 @@ mod tests {
 
     // Test: cache path computation
     fn cache_path(bucket: &str, key: &str) -> PathBuf {
-        Path::new("/tmp/test-cache").join(bucket).join(key.trim_start_matches('/'))
+        Path::new("/tmp/test-cache")
+            .join(bucket)
+            .join(key.trim_start_matches('/'))
     }
 
     #[test]
@@ -411,17 +421,17 @@ mod tests {
     async fn test_put_object_readonly_rejected() {
         let tmp = tempfile::tempdir().unwrap();
         let cache = tmp.path().join("cache");
-        let client = S3Client::new("us-east-1", &cache, 0, false)
-            .await
-            .unwrap();
+        let client = S3Client::new("us-east-1", &cache, 0, false).await.unwrap();
         let result = client
             .put_object("bucket", "key.txt", b"data", tmp.path())
             .await;
         assert!(result.is_err());
         let err = result.unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("read-only") || msg.contains("writes rejected"),
-                "expected read-only error, got: {msg}");
+        assert!(
+            msg.contains("read-only") || msg.contains("writes rejected"),
+            "expected read-only error, got: {msg}"
+        );
     }
 
     // Test: append_blob_index writes valid JSONL
@@ -431,9 +441,7 @@ mod tests {
         let cache = tmp.path().join("cache");
         let index_dir = tmp.path().join("vfs");
 
-        let client = S3Client::new("us-east-1", &cache, 0, true)
-            .await
-            .unwrap();
+        let client = S3Client::new("us-east-1", &cache, 0, true).await.unwrap();
 
         client
             .append_blob_index(&index_dir, "test/file.bin", "sha256:deadbeef")
@@ -457,9 +465,7 @@ mod tests {
         let cache = tmp.path().join("cache");
         let index_dir = tmp.path().join("vfs");
 
-        let client = S3Client::new("us-east-1", &cache, 0, true)
-            .await
-            .unwrap();
+        let client = S3Client::new("us-east-1", &cache, 0, true).await.unwrap();
 
         client
             .append_blob_index(&index_dir, "file1.txt", "sha256:aaa")
@@ -486,10 +492,7 @@ mod tests {
             sha256: "sha256:abc123".into(),
             etag: Some("\"etag-value\"".into()),
         };
-        assert_eq!(
-            result.cache_path,
-            Path::new("/tmp/cache/bucket/key.txt")
-        );
+        assert_eq!(result.cache_path, Path::new("/tmp/cache/bucket/key.txt"));
         assert_eq!(result.sha256, "sha256:abc123");
         assert_eq!(result.etag, Some("\"etag-value\"".into()));
     }

@@ -9,12 +9,10 @@ use warpfs_metadata::inventory;
 ///
 /// Idempotent: if `.vfs/manifest.yaml` already exists it is left untouched.
 pub fn run() -> Result<()> {
-    let cwd =
-        std::env::current_dir().context("failed to determine the current directory")?;
+    let cwd = std::env::current_dir().context("failed to determine the current directory")?;
 
     // Create the .vfs/ directory tree (idempotent — safe to call repeatedly).
-    inventory::create_vfs_structure(&cwd)
-        .context("failed to create .vfs directory structure")?;
+    inventory::create_vfs_structure(&cwd).context("failed to create .vfs directory structure")?;
 
     let manifest_path = cwd.join(".vfs").join("manifest.yaml");
 
@@ -52,8 +50,7 @@ pub fn run() -> Result<()> {
         performance: Default::default(),
     };
 
-    let yaml =
-        serde_yaml::to_string(&manifest).context("failed to serialize manifest to YAML")?;
+    let yaml = serde_yaml::to_string(&manifest).context("failed to serialize manifest to YAML")?;
     std::fs::write(&manifest_path, yaml)
         .with_context(|| format!("failed to write {}", manifest_path.display()))?;
 

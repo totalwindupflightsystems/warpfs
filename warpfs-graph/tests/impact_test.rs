@@ -17,10 +17,7 @@ fn edge(from: &str, to: &str, rel: &str) -> Edge {
 fn test_impact_direct() -> Result<(), Box<dyn std::error::Error>> {
     // Chain: a → b → c  (a imports b, b imports c)
     let graph = GraphDB::open(":memory:")?;
-    graph.insert_edges(&[
-        edge("a", "b", "imports"),
-        edge("b", "c", "imports"),
-    ])?;
+    graph.insert_edges(&[edge("a", "b", "imports"), edge("b", "c", "imports")])?;
 
     // Impact of c: b depends on c (depth 1), a depends on b (depth 2).
     let results = compute_impact(graph.conn(), "c", 10)?;
@@ -63,10 +60,7 @@ fn test_impact_transitive() -> Result<(), Box<dyn std::error::Error>> {
 fn test_impact_circular() -> Result<(), Box<dyn std::error::Error>> {
     // Cycle: a → b, b → a
     let graph = GraphDB::open(":memory:")?;
-    graph.insert_edges(&[
-        edge("a", "b", "imports"),
-        edge("b", "a", "imports"),
-    ])?;
+    graph.insert_edges(&[edge("a", "b", "imports"), edge("b", "a", "imports")])?;
 
     // Impact of a: b depends on a (depth 1). a is already visited, so no loop.
     let results = compute_impact(graph.conn(), "a", 10)?;
@@ -81,10 +75,7 @@ fn test_impact_circular() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn test_impact_max_depth_zero() -> Result<(), Box<dyn std::error::Error>> {
     let graph = GraphDB::open(":memory:")?;
-    graph.insert_edges(&[
-        edge("a", "b", "imports"),
-        edge("b", "c", "imports"),
-    ])?;
+    graph.insert_edges(&[edge("a", "b", "imports"), edge("b", "c", "imports")])?;
 
     // max_depth=0 → no traversal at all.
     let results = compute_impact(graph.conn(), "c", 0)?;
@@ -97,10 +88,7 @@ fn test_impact_max_depth_zero() -> Result<(), Box<dyn std::error::Error>> {
 fn test_impact_max_depth_one() -> Result<(), Box<dyn std::error::Error>> {
     // Chain: a → b → c
     let graph = GraphDB::open(":memory:")?;
-    graph.insert_edges(&[
-        edge("a", "b", "imports"),
-        edge("b", "c", "imports"),
-    ])?;
+    graph.insert_edges(&[edge("a", "b", "imports"), edge("b", "c", "imports")])?;
 
     // max_depth=1 → only direct dependent of c (b). a is 2 hops away, excluded.
     let results = compute_impact(graph.conn(), "c", 1)?;

@@ -29,8 +29,10 @@ pub fn run_discover(workspace: bool) -> Result<()> {
         .context("failed to walk directory tree for source files")?;
 
     if source_files.is_empty() {
-        println!("No supported source files found. Supported extensions: {}",
-            Language::all_extensions().join(", "));
+        println!(
+            "No supported source files found. Supported extensions: {}",
+            Language::all_extensions().join(", ")
+        );
         return Ok(());
     }
 
@@ -49,7 +51,9 @@ pub fn run_discover(workspace: bool) -> Result<()> {
     let mut unique_sources: HashSet<String> = HashSet::new();
 
     for (language, files) in &by_lang {
-        if files.is_empty() { continue; }
+        if files.is_empty() {
+            continue;
+        }
         let lang_name = format!("{:?}", language);
         let mut parser = Parser::for_language(*language)
             .with_context(|| format!("failed to initialize tree-sitter {lang_name} parser"))?;
@@ -92,18 +96,14 @@ pub fn run_discover(workspace: bool) -> Result<()> {
 
             let mut external_count = 0;
             for edge in all_edges.iter_mut() {
-                if let Some((repo, path)) =
-                    edges::find_external_repo(&edge.to, &repo_mounts)
-                {
+                if let Some((repo, path)) = edges::find_external_repo(&edge.to, &repo_mounts) {
                     edge.to = edges::format_external_edge(&repo, &path);
                     external_count += 1;
                 }
             }
 
             if external_count > 0 {
-                println!(
-                    "Flagged {external_count} cross-repo edge(s) as external:repo:path"
-                );
+                println!("Flagged {external_count} cross-repo edge(s) as external:repo:path");
             }
         }
     }
@@ -157,19 +157,22 @@ pub fn run_related(path: &str, relation: Option<&str>, direction: Option<&str>) 
         anyhow::bail!("not found in graph");
     }
 
-    let dir = direction.map(|d| warpfs_graph::Direction::parse(d)).unwrap_or(warpfs_graph::Direction::Forward);
+    let dir = direction
+        .map(warpfs_graph::Direction::parse)
+        .unwrap_or(warpfs_graph::Direction::Forward);
 
     let edges = graph
         .related(path, relation, dir)
         .context("failed to query related edges")?;
 
-    if edges.is_empty() && relation.is_some() {
-        println!(
-            "No {} edges found for '{}' with relation filter '{}'.",
-            dir, path,
-            relation.unwrap()
-        );
-        return Ok(());
+    if edges.is_empty() {
+        if let Some(rel) = &relation {
+            println!(
+                "No {} edges found for '{}' with relation filter '{}'.",
+                dir, path, rel
+            );
+            return Ok(());
+        }
     }
 
     // Print edges in a readable format.
@@ -215,16 +218,10 @@ pub fn run_impact(path: &str, max_depth: u32, format: Option<&str>, external: bo
     }
 
     let results = if external {
-        warpfs_graph::impact::compute_impact_with_external(
-            graph.conn(),
-            path,
-            max_depth,
-            true,
-        )
-        .context("failed to compute impact with external edges")?
+        warpfs_graph::impact::compute_impact_with_external(graph.conn(), path, max_depth, true)
+            .context("failed to compute impact with external edges")?
     } else {
-        impact::compute_impact(graph.conn(), path, max_depth)
-            .context("failed to compute impact")?
+        impact::compute_impact(graph.conn(), path, max_depth).context("failed to compute impact")?
     };
 
     match format {
@@ -239,7 +236,10 @@ pub fn run_impact(path: &str, max_depth: u32, format: Option<&str>, external: bo
                 println!("No dependents found for '{}'.", path);
             } else {
                 for file in &results {
-                    println!("{}  ←  {}  (depth: {})", file.path, file.relation, file.depth);
+                    println!(
+                        "{}  ←  {}  (depth: {})",
+                        file.path, file.relation, file.depth
+                    );
                 }
             }
         }
@@ -260,7 +260,9 @@ pub fn run_stats() -> Result<()> {
 
     let graph_db_str = graph_db.to_str().unwrap_or(".vfs/graph/graph.db");
     let graph = GraphDB::open(graph_db_str).context("failed to open DuckDB graph database")?;
-    let stats = graph.stats().context("failed to compute graph statistics")?;
+    let stats = graph
+        .stats()
+        .context("failed to compute graph statistics")?;
 
     if stats.total_edges == 0 {
         println!("No graph data. Run `warpfs graph discover` first.");
@@ -294,18 +296,15 @@ fn discover_test_associations(source_files: &[PathBuf], cwd: &Path) -> Vec<Edge>
     let mut edges = Vec::new();
     let stem_set: HashSet<String> = source_files
         .iter()
-        .filter_map(|p| {
+        .map(|p| {
             let rel = p.strip_prefix(cwd).unwrap_or(p);
-            Some(rel.to_string_lossy().into_owned())
+            rel.to_string_lossy().into_owned()
         })
         .collect();
 
     for file in source_files {
         let rel = file.strip_prefix(cwd).unwrap_or(file);
-        let file_name = rel
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
+        let file_name = rel.file_name().and_then(|n| n.to_str()).unwrap_or("");
         let file_str = rel.to_string_lossy();
 
         // Check if this is a test file -> generate tested_by edge
@@ -313,7 +312,7 @@ fn discover_test_associations(source_files: &[PathBuf], cwd: &Path) -> Vec<Edge>
             let parent = rel.parent().unwrap_or(Path::new(""));
             let source_path = parent.join(&source_stem);
             let source_str = source_path.to_string_lossy().into_owned();
-            if stem_set.contains(&source_str) || file_name == &source_stem {
+            if stem_set.contains(&source_str) || file_name == source_stem {
                 edges.push(Edge {
                     from: file_str.clone().into_owned(),
                     to: source_str,
@@ -351,9 +350,7 @@ fn test_to_source(name: &str) -> Option<String> {
     } else if let Some(stem) = name.strip_suffix("_test.rb") {
         Some(format!("{stem}.rb"))
     } else if let Some(stem) = name.strip_prefix("test_") {
-        if stem.ends_with(".py") {
-            Some(stem.to_string())
-        } else if stem.ends_with(".c") {
+        if stem.ends_with(".py") || stem.ends_with(".c") {
             Some(stem.to_string())
         } else {
             None
@@ -362,10 +359,9 @@ fn test_to_source(name: &str) -> Option<String> {
         Some(format!("{stem}.ts"))
     } else if let Some(stem) = name.strip_suffix(".spec.ts") {
         Some(format!("{stem}.ts"))
-    } else if let Some(stem) = name.strip_suffix("Test.java") {
-        Some(format!("{stem}.java"))
     } else {
-        None
+        name.strip_suffix("Test.java")
+            .map(|stem| format!("{stem}.java"))
     }
 }
 

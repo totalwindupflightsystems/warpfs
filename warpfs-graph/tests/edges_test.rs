@@ -29,7 +29,9 @@ fn test_external_edge_detection_in_graph() {
     .unwrap();
 
     // `related` should return both local and external edges.
-    let results = db.related("auth-service/src/handler.go", None, Direction::Forward).unwrap();
+    let results = db
+        .related("auth-service/src/handler.go", None, Direction::Forward)
+        .unwrap();
     assert_eq!(results.len(), 2);
 
     // External edge should have the external: prefix.
@@ -70,8 +72,8 @@ fn test_external_impact_traverses_cross_repo() {
     .unwrap();
 
     // Without external flag: only payment-service found.
-    let local = compute_impact_with_external(db.conn(), "shared-lib/pkg/utils.go", 10, false)
-        .unwrap();
+    let local =
+        compute_impact_with_external(db.conn(), "shared-lib/pkg/utils.go", 10, false).unwrap();
     let local_paths: Vec<&str> = local.iter().map(|f| f.path.as_str()).collect();
     assert!(
         local_paths.contains(&"payment-service/src/handler.go"),
@@ -83,8 +85,7 @@ fn test_external_impact_traverses_cross_repo() {
     );
 
     // With external flag: both are found.
-    let all = compute_impact_with_external(db.conn(), "shared-lib/pkg/utils.go", 10, true)
-        .unwrap();
+    let all = compute_impact_with_external(db.conn(), "shared-lib/pkg/utils.go", 10, true).unwrap();
     let all_paths: Vec<&str> = all.iter().map(|f| f.path.as_str()).collect();
     assert!(
         all_paths.contains(&"payment-service/src/handler.go"),

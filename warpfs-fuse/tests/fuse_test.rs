@@ -101,7 +101,11 @@ fn test_getattr_file_size() {
     let resolved = wfs.resolve_path(ino).unwrap();
 
     let metadata = fs::metadata(&resolved).unwrap();
-    assert_eq!(metadata.len(), content.len() as u64, "file size should match content length");
+    assert_eq!(
+        metadata.len(),
+        content.len() as u64,
+        "file size should match content length"
+    );
     assert!(metadata.is_file(), "readme.md should be a regular file");
 }
 
@@ -149,8 +153,8 @@ fn test_readdir_sorted_entries() {
 
 #[test]
 fn test_permission_compute_mode() {
-    use warpfs_fuse::permissions::{compute_mode, default_protections};
     use std::path::Path;
+    use warpfs_fuse::permissions::{compute_mode, default_protections};
 
     let rules = default_protections();
 
@@ -174,5 +178,8 @@ fn test_permission_compute_mode() {
 #[test]
 fn test_default_protections_count() {
     let rules = warpfs_fuse::permissions::default_protections();
-    assert!(rules.len() >= 12, "should have at least 12 default protection rules");
+    assert!(
+        rules.len() >= 12,
+        "should have at least 12 default protection rules"
+    );
 }

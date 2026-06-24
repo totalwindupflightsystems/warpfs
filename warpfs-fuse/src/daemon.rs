@@ -56,10 +56,7 @@ pub fn unmount(mount_point: &Path) -> anyhow::Result<()> {
 
 /// Build the mount option list from the config.
 fn mount_options(config: &FuseConfig) -> Vec<MountOption> {
-    let mut opts = vec![
-        MountOption::RO,
-        MountOption::FSName("warpfs".into()),
-    ];
+    let mut opts = vec![MountOption::RO, MountOption::FSName("warpfs".into())];
 
     if config.allow_other {
         opts.push(MountOption::AllowOther);

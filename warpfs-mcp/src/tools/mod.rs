@@ -184,9 +184,7 @@ fn get_metadata(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
     let mut map = serde_json::Map::new();
     for full_name in full_names {
         // Strip the `user.vfs.` prefix so get_vfs_xattr doesn't double it.
-        let short_name = full_name
-            .strip_prefix("user.vfs.")
-            .unwrap_or(&full_name);
+        let short_name = full_name.strip_prefix("user.vfs.").unwrap_or(&full_name);
         match warpfs_metadata::get_vfs_xattr(path, short_name)? {
             Some(val) => {
                 map.insert(full_name, serde_json::Value::String(val));
@@ -305,9 +303,8 @@ fn load_manifest() -> McpResult<warpfs_core::manifest::Manifest> {
     };
 
     let path_str = path.to_str().unwrap_or(MANIFEST_PATH);
-    warpfs_core::manifest::Manifest::from_file(path_str).map_err(|e| {
-        McpError::Protocol(format!("Failed to load manifest: {e}"))
-    })
+    warpfs_core::manifest::Manifest::from_file(path_str)
+        .map_err(|e| McpError::Protocol(format!("Failed to load manifest: {e}")))
 }
 
 /// `vfs_rule_list` — return all rules defined in the manifest.
@@ -394,17 +391,20 @@ fn rule_check(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
 }
 
 fn list_directory(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
-    let path = arguments["path"].as_str().ok_or_else(|| McpError::Protocol("missing path".into()))?;
+    let path = arguments["path"]
+        .as_str()
+        .ok_or_else(|| McpError::Protocol("missing path".into()))?;
     let manifest = load_manifest()?;
     let entries = warpfs_core::virtual_dir::list_directory(&manifest, path);
     Ok(serde_json::json!({ "entries": entries, "total": entries.len() }))
 }
 fn resolve_path_mcp(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
-    let path = arguments["path"].as_str().ok_or_else(|| McpError::Protocol("missing path".into()))?;
+    let path = arguments["path"]
+        .as_str()
+        .ok_or_else(|| McpError::Protocol("missing path".into()))?;
     let manifest = load_manifest()?;
     match warpfs_core::virtual_dir::resolve_path(&manifest, path) {
         Some(r) => Ok(serde_json::to_value(r)?),
         None => Ok(serde_json::json!({"error":"not found","path":path})),
     }
 }
-

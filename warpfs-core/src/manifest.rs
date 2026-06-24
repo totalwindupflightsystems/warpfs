@@ -392,20 +392,12 @@ pub struct LocalBackend {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[derive(Default)]
 pub struct Metadata {
     #[serde(default)]
     pub namespaces: Vec<String>,
     #[serde(default)]
     pub auto: AutoMetadata,
-}
-
-impl Default for Metadata {
-    fn default() -> Self {
-        Self {
-            namespaces: Vec::new(),
-            auto: AutoMetadata::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -681,6 +673,7 @@ pub struct PluginProvides {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[derive(Default)]
 pub struct Discovery {
     #[serde(default)]
     pub feature_inference: FeatureInference,
@@ -688,16 +681,6 @@ pub struct Discovery {
     pub test_association: TestAssociation,
     #[serde(default)]
     pub generated_detection: GeneratedDetection,
-}
-
-impl Default for Discovery {
-    fn default() -> Self {
-        Self {
-            feature_inference: FeatureInference::default(),
-            test_association: TestAssociation::default(),
-            generated_detection: GeneratedDetection::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -793,6 +776,7 @@ pub struct Sandbox {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[derive(Default)]
 pub struct Performance {
     #[serde(default)]
     pub cache: CacheConfig,
@@ -802,17 +786,6 @@ pub struct Performance {
     pub duckdb: DuckDbPerf,
     #[serde(default)]
     pub triggers: TriggerPerf,
-}
-
-impl Default for Performance {
-    fn default() -> Self {
-        Self {
-            cache: CacheConfig::default(),
-            fuse: FusePerf::default(),
-            duckdb: DuckDbPerf::default(),
-            triggers: TriggerPerf::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -900,10 +873,10 @@ impl Default for TriggerPerf {
 impl Manifest {
     pub fn from_file(path: &str) -> Result<Manifest, ManifestError> {
         let contents = std::fs::read_to_string(path)?;
-        Self::from_str(&contents)
+        Self::parse(&contents)
     }
 
-    pub fn from_str(yaml: &str) -> Result<Manifest, ManifestError> {
+    pub fn parse(yaml: &str) -> Result<Manifest, ManifestError> {
         let manifest: Manifest = serde_yaml::from_str(yaml).map_err(|e| {
             let msg = e.to_string();
             if msg.contains("unknown field") || msg.contains("unknown variant") {
@@ -928,59 +901,117 @@ mod tests {
         use super::*;
 
         #[test]
-        fn true_returns_true()         { assert_eq!(default_true(), true); }
+        fn true_returns_true() {
+            assert_eq!(default_true(), true);
+        }
         #[test]
-        fn version_is_2()              { assert_eq!(default_version(), 2); }
+        fn version_is_2() {
+            assert_eq!(default_version(), 2);
+        }
         #[test]
-        fn mount_point()               { assert_eq!(default_mount_point(), "/mnt/vfs/project"); }
+        fn mount_point() {
+            assert_eq!(default_mount_point(), "/mnt/vfs/project");
+        }
         #[test]
-        fn ninep_listen()              { assert_eq!(default_ninep_listen(), "0.0.0.0:5640"); }
+        fn ninep_listen() {
+            assert_eq!(default_ninep_listen(), "0.0.0.0:5640");
+        }
         #[test]
-        fn mcp_transport()             { assert_eq!(default_mcp_transport(), "stdio"); }
+        fn mcp_transport() {
+            assert_eq!(default_mcp_transport(), "stdio");
+        }
         #[test]
-        fn mcp_port()                  { assert_eq!(default_mcp_port(), 8766); }
+        fn mcp_port() {
+            assert_eq!(default_mcp_port(), 8766);
+        }
         #[test]
-        fn repo_ref()                  { assert_eq!(default_repo_ref(), "main"); }
+        fn repo_ref() {
+            assert_eq!(default_repo_ref(), "main");
+        }
         #[test]
-        fn ttl_is_3600()               { assert_eq!(default_ttl(), 3600); }
+        fn ttl_is_3600() {
+            assert_eq!(default_ttl(), 3600);
+        }
         #[test]
-        fn max_edges()                 { assert_eq!(default_max_edges(), 100_000); }
+        fn max_edges() {
+            assert_eq!(default_max_edges(), 100_000);
+        }
         #[test]
-        fn impact_depth()              { assert_eq!(default_impact_depth(), 5); }
+        fn impact_depth() {
+            assert_eq!(default_impact_depth(), 5);
+        }
         #[test]
-        fn default_mode()              { assert_eq!(default_default_mode(), "0644"); }
+        fn default_mode() {
+            assert_eq!(default_default_mode(), "0644");
+        }
         #[test]
-        fn trigger_timeout()           { assert_eq!(default_trigger_timeout(), "5s"); }
+        fn trigger_timeout() {
+            assert_eq!(default_trigger_timeout(), "5s");
+        }
         #[test]
-        fn plugin_priority()           { assert_eq!(default_plugin_priority(), 10); }
+        fn plugin_priority() {
+            assert_eq!(default_plugin_priority(), 10);
+        }
         #[test]
-        fn fi_strategy()               { assert_eq!(default_fi_strategy(), "directory"); }
+        fn fi_strategy() {
+            assert_eq!(default_fi_strategy(), "directory");
+        }
         #[test]
-        fn cache_path()                { assert_eq!(default_cache_path(), ".vfs/cache/"); }
+        fn cache_path() {
+            assert_eq!(default_cache_path(), ".vfs/cache/");
+        }
         #[test]
-        fn cache_max_size()            { assert_eq!(default_cache_max_size(), "1GB"); }
+        fn cache_max_size() {
+            assert_eq!(default_cache_max_size(), "1GB");
+        }
         #[test]
-        fn attr_timeout_positive()     { assert!(default_attr_timeout() > 0.0); }
+        fn attr_timeout_positive() {
+            assert!(default_attr_timeout() > 0.0);
+        }
         #[test]
-        fn entry_timeout_positive()    { assert!(default_entry_timeout() > 0.0); }
+        fn entry_timeout_positive() {
+            assert!(default_entry_timeout() > 0.0);
+        }
         #[test]
-        fn max_read()                  { assert_eq!(default_max_read(), 131_072); }
+        fn max_read() {
+            assert_eq!(default_max_read(), 131_072);
+        }
         #[test]
-        fn max_write()                 { assert_eq!(default_max_write(), 131_072); }
+        fn max_write() {
+            assert_eq!(default_max_write(), 131_072);
+        }
         #[test]
-        fn duckdb_threads()            { assert_eq!(default_duckdb_threads(), 4); }
+        fn duckdb_threads() {
+            assert_eq!(default_duckdb_threads(), 4);
+        }
         #[test]
-        fn duckdb_memory()             { assert_eq!(default_duckdb_memory(), "512MB"); }
+        fn duckdb_memory() {
+            assert_eq!(default_duckdb_memory(), "512MB");
+        }
         #[test]
-        fn debounce()                  { assert_eq!(default_debounce(), "500ms"); }
+        fn debounce() {
+            assert_eq!(default_debounce(), "500ms");
+        }
         #[test]
-        fn max_concurrent()            { assert_eq!(default_max_concurrent(), 8); }
+        fn max_concurrent() {
+            assert_eq!(default_max_concurrent(), 8);
+        }
 
         #[test]
         fn languages_has_all_9() {
             let v = default_languages();
             assert_eq!(v.len(), 9);
-            for lang in &["go","python","typescript","rust","javascript","java","c","cpp","ruby"] {
+            for lang in &[
+                "go",
+                "python",
+                "typescript",
+                "rust",
+                "javascript",
+                "java",
+                "c",
+                "cpp",
+                "ruby",
+            ] {
                 assert!(v.contains(&lang.to_string()), "missing: {}", lang);
             }
         }
@@ -989,7 +1020,7 @@ mod tests {
         fn test_patterns_has_all_4() {
             let v = default_test_patterns();
             assert_eq!(v.len(), 4);
-            for pat in &["*_test.go","test_*.py","*.test.ts","*.spec.ts"] {
+            for pat in &["*_test.go", "test_*.py", "*.test.ts", "*.spec.ts"] {
                 assert!(v.contains(&pat.to_string()), "missing: {}", pat);
             }
         }

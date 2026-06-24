@@ -18,8 +18,7 @@ fn xattr_supported(dir: &Path) -> bool {
     if fs::write(&probe, b"probe").is_err() {
         return false;
     }
-    let ok = xattr::set_vfs_xattr(&probe, "probe", "test")
-        .is_ok()
+    let ok = xattr::set_vfs_xattr(&probe, "probe", "test").is_ok()
         && xattr::get_vfs_xattr(&probe, "probe")
             .ok()
             .flatten()
@@ -40,8 +39,7 @@ fn test_xattr_set_get_roundtrip() {
     let file = dir.path().join("example.txt");
     fs::write(&file, b"hello").expect("write file");
 
-    xattr::set_vfs_xattr(&file, "risk", "critical-path")
-        .expect("set xattr");
+    xattr::set_vfs_xattr(&file, "risk", "critical-path").expect("set xattr");
 
     let got = xattr::get_vfs_xattr(&file, "risk").expect("get xattr");
     assert_eq!(got.as_deref(), Some("critical-path"));
@@ -59,7 +57,11 @@ fn test_xattr_get_missing_returns_none() {
     fs::write(&file, b"no metadata").expect("write file");
 
     let got = xattr::get_vfs_xattr(&file, "nonexistent").expect("get missing xattr");
-    assert!(got.is_none(), "expected None for missing xattr, got {:?}", got);
+    assert!(
+        got.is_none(),
+        "expected None for missing xattr, got {:?}",
+        got
+    );
 }
 
 #[test]
@@ -106,11 +108,7 @@ fn test_xattr_remove() {
     xattr::remove_vfs_xattr(&file, "risk").expect("remove xattr");
 
     let got = xattr::get_vfs_xattr(&file, "risk").expect("get removed xattr");
-    assert!(
-        got.is_none(),
-        "expected None after remove, got {:?}",
-        got
-    );
+    assert!(got.is_none(), "expected None after remove, got {:?}", got);
 
     // Verify it's no longer in the list.
     let attrs = xattr::list_vfs_xattrs(&file).expect("list xattrs");

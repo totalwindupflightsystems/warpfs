@@ -36,14 +36,7 @@ pub struct BackendMount {
 // ──────────────────────── Directory structure ────────────────────
 
 /// Subdirectories that make up the `.vfs/` tree (§16).
-const VFS_SUBDIRS: &[&str] = &[
-    "graph",
-    "backends",
-    "blobs",
-    "features",
-    "plugins",
-    "cache",
-];
+const VFS_SUBDIRS: &[&str] = &["graph", "backends", "blobs", "features", "plugins", "cache"];
 
 /// Create the `.vfs/` directory tree at `root`.
 ///
@@ -99,7 +92,10 @@ pub fn append_edges(edges_jsonl: &Path, edges: &[Edge]) -> Result<(), MetadataEr
         serde_json::to_writer(&mut buf, edge)?;
         buf.push(b'\n');
     }
-    let mut file = OpenOptions::new().create(true).append(true).open(edges_jsonl)?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(edges_jsonl)?;
     file.write_all(&buf)?;
     Ok(())
 }
@@ -134,7 +130,10 @@ pub fn append_edges_deduped(edges_jsonl: &Path, edges: &[Edge]) -> Result<usize,
         return Ok(0);
     }
 
-    append_edges(edges_jsonl, &new_edges.iter().map(|&e| e.clone()).collect::<Vec<_>>())?;
+    append_edges(
+        edges_jsonl,
+        &new_edges.iter().map(|&e| e.clone()).collect::<Vec<_>>(),
+    )?;
     Ok(new_edges.len())
 }
 

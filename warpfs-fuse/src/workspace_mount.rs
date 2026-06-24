@@ -11,10 +11,10 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use fuser::{
-    FileAttr, FileType, Filesystem, KernelConfig, MountOption, ReplyAttr, ReplyData, ReplyDirectory,
-    ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite, ReplyXattr, Request,
+    FileAttr, FileType, Filesystem, KernelConfig, MountOption, ReplyAttr, ReplyData,
+    ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite, ReplyXattr, Request,
 };
-use libc::{EACCES, ENOENT, ENODATA};
+use libc::{EACCES, ENODATA, ENOENT};
 
 use warpfs_core::workspace::MountEntry;
 
@@ -115,7 +115,7 @@ impl WorkspaceMount {
         FileAttr {
             ino,
             size: entry.size,
-            blocks: (entry.size + 511) / 512,
+            blocks: entry.size.div_ceil(512),
             atime: now,
             mtime: now,
             ctime: now,
@@ -200,11 +200,7 @@ impl WorkspaceMount {
 }
 
 impl Filesystem for WorkspaceMount {
-    fn init(
-        &mut self,
-        _req: &Request,
-        _config: &mut KernelConfig,
-    ) -> Result<(), std::ffi::c_int> {
+    fn init(&mut self, _req: &Request, _config: &mut KernelConfig) -> Result<(), std::ffi::c_int> {
         Ok(())
     }
 
@@ -214,10 +210,7 @@ impl Filesystem for WorkspaceMount {
         } else {
             let needs_populate = {
                 let files = self.files.read().unwrap();
-                files
-                    .get(&parent)
-                    .and_then(|e| e.mount_idx)
-                    .is_some()
+                files.get(&parent).and_then(|e| e.mount_idx).is_some()
             };
             if needs_populate {
                 let mount_idx = {
@@ -330,7 +323,12 @@ impl Filesystem for WorkspaceMount {
                 Some(e) if matches!(e.kind, InodeKind::Directory) => FileType::Directory,
                 _ => FileType::RegularFile,
             };
-            if reply.add(*child_ino, idx + 1, file_type, name.to_string_lossy().as_ref()) {
+            if reply.add(
+                *child_ino,
+                idx + 1,
+                file_type,
+                name.to_string_lossy().as_ref(),
+            ) {
                 break;
             }
             idx += 1;

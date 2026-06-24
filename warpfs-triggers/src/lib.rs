@@ -7,11 +7,11 @@
 //
 // Features: debouncing, async execution, timeouts, concurrency limiting
 
-pub mod engine;
 pub mod debounce;
+pub mod engine;
 
-pub use engine::TriggerEngine;
 pub use debounce::Debouncer;
+pub use engine::TriggerEngine;
 
 pub use std::path::PathBuf;
 
@@ -20,9 +20,9 @@ pub use std::path::PathBuf;
 pub struct TriggerConfig {
     pub name: String,
     pub watch_pattern: String,
-    pub events: Vec<String>,       // write, delete
-    pub command: Option<String>,   // shell command template
-    pub builtin: Option<String>,   // parse-and-diff, upload-to-backend
+    pub events: Vec<String>,     // write, delete
+    pub command: Option<String>, // shell command template
+    pub builtin: Option<String>, // parse-and-diff, upload-to-backend
     pub async_exec: bool,
     pub timeout_secs: u64,
     pub debounce_ms: u64,
@@ -42,7 +42,7 @@ pub enum TriggerAction {
 pub struct FileEvent {
     pub path: PathBuf,
     pub event_type: EventType,
-    pub timestamp: u64,  // unix timestamp
+    pub timestamp: u64, // unix timestamp
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

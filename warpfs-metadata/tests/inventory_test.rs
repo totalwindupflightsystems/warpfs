@@ -24,11 +24,7 @@ fn test_create_vfs_structure_all_subdirs() {
 
     for sub in &expected {
         let p = dir.path().join(sub);
-        assert!(
-            p.is_dir(),
-            "{} should be a directory",
-            sub
-        );
+        assert!(p.is_dir(), "{} should be a directory", sub);
     }
 }
 
@@ -73,9 +69,21 @@ fn test_append_edges_bulk() {
     let edges_path = dir.path().join("graph").join("edges.jsonl");
 
     let edges = vec![
-        Edge { from: "a.go".into(), to: "b.go".into(), rel: "imports".into() },
-        Edge { from: "b.go".into(), to: "c.go".into(), rel: "calls".into() },
-        Edge { from: "c.go".into(), to: "d.go".into(), rel: "uses".into() },
+        Edge {
+            from: "a.go".into(),
+            to: "b.go".into(),
+            rel: "imports".into(),
+        },
+        Edge {
+            from: "b.go".into(),
+            to: "c.go".into(),
+            rel: "calls".into(),
+        },
+        Edge {
+            from: "c.go".into(),
+            to: "d.go".into(),
+            rel: "uses".into(),
+        },
     ];
 
     inventory::append_edges(&edges_path, &edges).expect("append 3 edges");
@@ -114,18 +122,24 @@ fn test_append_edges_appends_not_overwrites() {
     let dir = tempdir().expect("create tempdir");
     let edges_path = dir.path().join("graph/edges.jsonl");
 
-    inventory::append_edge(&edges_path, &Edge {
-        from: "first".into(),
-        to: "second".into(),
-        rel: "r".into(),
-    })
+    inventory::append_edge(
+        &edges_path,
+        &Edge {
+            from: "first".into(),
+            to: "second".into(),
+            rel: "r".into(),
+        },
+    )
     .expect("first append");
 
-    inventory::append_edge(&edges_path, &Edge {
-        from: "third".into(),
-        to: "fourth".into(),
-        rel: "r".into(),
-    })
+    inventory::append_edge(
+        &edges_path,
+        &Edge {
+            from: "third".into(),
+            to: "fourth".into(),
+            rel: "r".into(),
+        },
+    )
     .expect("second append");
 
     let contents = fs::read_to_string(&edges_path).expect("read");
@@ -190,7 +204,10 @@ fn test_read_mounts_whitespace_only_file_returns_empty() {
     fs::write(&mounts_path, "   \n\n  \n").expect("write whitespace file");
 
     let mounts = inventory::read_mounts(&mounts_path).expect("read whitespace mounts");
-    assert!(mounts.is_empty(), "expected empty vec for whitespace-only file");
+    assert!(
+        mounts.is_empty(),
+        "expected empty vec for whitespace-only file"
+    );
 }
 
 #[test]
@@ -222,10 +239,7 @@ fn test_edge_to_jsonl_format() {
     };
 
     let jsonl = inventory::edge_to_jsonl(&edge).expect("serialize edge");
-    assert!(
-        jsonl.ends_with('\n'),
-        "JSONL line should end with newline"
-    );
+    assert!(jsonl.ends_with('\n'), "JSONL line should end with newline");
 
     // Strip the newline and verify it's valid JSON with the right fields.
     let trimmed = jsonl.trim_end();
@@ -240,12 +254,22 @@ fn test_append_multiple_edges_then_verify_order() {
 
     // Append in two batches to verify ordering is preserved.
     let batch1 = vec![
-        Edge { from: "1".into(), to: "2".into(), rel: "a".into() },
-        Edge { from: "2".into(), to: "3".into(), rel: "b".into() },
+        Edge {
+            from: "1".into(),
+            to: "2".into(),
+            rel: "a".into(),
+        },
+        Edge {
+            from: "2".into(),
+            to: "3".into(),
+            rel: "b".into(),
+        },
     ];
-    let batch2 = vec![
-        Edge { from: "3".into(), to: "4".into(), rel: "c".into() },
-    ];
+    let batch2 = vec![Edge {
+        from: "3".into(),
+        to: "4".into(),
+        rel: "c".into(),
+    }];
 
     inventory::append_edges(&edges_path, &batch1).expect("batch 1");
     inventory::append_edges(&edges_path, &batch2).expect("batch 2");

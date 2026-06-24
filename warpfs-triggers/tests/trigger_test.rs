@@ -1,5 +1,5 @@
-use warpfs_triggers::{Debouncer, EventType, TriggerConfig, TriggerEngine};
 use std::path::Path;
+use warpfs_triggers::{Debouncer, EventType, TriggerConfig, TriggerEngine};
 
 #[test]
 fn test_debouncer_should_fire_first_event() {

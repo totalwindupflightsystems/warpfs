@@ -4,7 +4,7 @@
 // Event flow:
 //   inotify event -> mask_to_event_type -> pattern match -> debounce -> execute
 
-use crate::{Debouncer, FileEvent, EventType, TriggerAction, TriggerConfig};
+use crate::{Debouncer, EventType, FileEvent, TriggerAction, TriggerConfig};
 use inotify::{EventMask, Inotify, WatchDescriptor, WatchMask};
 use std::collections::HashMap;
 use std::io;
@@ -20,10 +20,13 @@ pub struct TriggerEngine {
     /// Watch descriptors by path.
     watches: HashMap<PathBuf, WatchDescriptor>,
     /// Global debounce default from manifest (500ms default).
+    #[allow(dead_code)]
     debounce_default_ms: u64,
     /// Max concurrent trigger executions.
+    #[allow(dead_code)]
     max_concurrent: usize,
     /// Timeout for async trigger execution.
+    #[allow(dead_code)]
     trigger_timeout: Duration,
 }
 
@@ -36,7 +39,7 @@ impl TriggerEngine {
             .unwrap_or(Duration::from_secs(30));
 
         let watcher = Inotify::init()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
+            .map_err(|e| io::Error::other(e.to_string()))
             .expect("TriggerEngine::new: failed to initialize inotify");
 
         Self {
@@ -61,7 +64,7 @@ impl TriggerEngine {
             .watcher
             .watches()
             .add(dir, mask)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| io::Error::other(e.to_string()))?;
         self.watches.insert(dir.to_path_buf(), wd);
         count += 1;
 
@@ -94,7 +97,7 @@ impl TriggerEngine {
             let events = self
                 .watcher
                 .read_events(&mut buffer)
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+                .map_err(|e| io::Error::other(e.to_string()))?;
 
             for event in events {
                 let mask = event.mask;
@@ -203,10 +206,7 @@ fn event_type_string(et: &EventType) -> &str {
 ///   "*.go"   matches files ending in ".go"
 ///   "Makefile"  exact match
 fn matches_pattern(path: &Path, pattern: &str) -> bool {
-    let filename = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("");
+    let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     if pattern == "*" {
         return true;
@@ -255,10 +255,7 @@ async fn execute_trigger(cfg: &TriggerConfig, event: &FileEvent, timeout_dur: Du
         let file_path = event.path.display().to_string();
         let cmd = command.replace("{{ .FilePath }}", &file_path);
 
-        eprintln!(
-            "[trigger] '{}' executing: {}",
-            cfg.name, cmd
-        );
+        eprintln!("[trigger] '{}' executing: {}", cfg.name, cmd);
 
         match timeout(timeout_dur, async {
             tokio::process::Command::new("sh")
@@ -273,8 +270,7 @@ async fn execute_trigger(cfg: &TriggerConfig, event: &FileEvent, timeout_dur: Du
                 if !output.status.success() {
                     eprintln!(
                         "[trigger] '{}' exited with status {}",
-                        cfg.name,
-                        output.status
+                        cfg.name, output.status
                     );
                     if let Some(on_failure) = &cfg.on_failure {
                         log_trigger_action(on_failure, &event.path);
@@ -286,19 +282,13 @@ async fn execute_trigger(cfg: &TriggerConfig, event: &FileEvent, timeout_dur: Du
                 }
             }
             Ok(Err(e)) => {
-                eprintln!(
-                    "[trigger] '{}' command failed: {}",
-                    cfg.name, e
-                );
+                eprintln!("[trigger] '{}' command failed: {}", cfg.name, e);
                 if let Some(on_failure) = &cfg.on_failure {
                     log_trigger_action(on_failure, &event.path);
                 }
             }
             Err(_) => {
-                eprintln!(
-                    "[trigger] '{}' timed out after {:?}",
-                    cfg.name, timeout_dur
-                );
+                eprintln!("[trigger] '{}' timed out after {:?}", cfg.name, timeout_dur);
                 if let Some(on_failure) = &cfg.on_failure {
                     log_trigger_action(on_failure, &event.path);
                 }
@@ -317,9 +307,17 @@ async fn execute_trigger(cfg: &TriggerConfig, event: &FileEvent, timeout_dur: Du
 /// Log a TriggerAction (stub — real implementation would set xattrs, etc.).
 fn log_trigger_action(action: &TriggerAction, path: &Path) {
     match action {
-        TriggerAction::SetXattr { key, value_template } => {
+        TriggerAction::SetXattr {
+            key,
+            value_template,
+        } => {
             let value = value_template.replace("{{ .FilePath }}", &path.display().to_string());
-            eprintln!("[trigger-action] setxattr {}={} on {}", key, value, path.display());
+            eprintln!(
+                "[trigger-action] setxattr {}={} on {}",
+                key,
+                value,
+                path.display()
+            );
         }
         TriggerAction::Warn => {
             eprintln!("[trigger-action] warn for {}", path.display());
@@ -436,10 +434,7 @@ mod tests {
     #[test]
     fn test_matches_pattern_directory_component() {
         // matches_pattern uses only the filename portion via file_name().
-        assert!(matches_pattern(
-            Path::new("src/subdir/main.go"),
-            "*.go"
-        ));
+        assert!(matches_pattern(Path::new("src/subdir/main.go"), "*.go"));
         assert!(!matches_pattern(
             Path::new("src/subdir/main.go"),
             "src/subdir/main.go"
@@ -510,7 +505,10 @@ mod tests {
             .any(|e| e == event_type_string(&event_type));
 
         assert!(pattern_match, "pattern should match *.go");
-        assert!(!event_match, "write event should be blocked by delete-only filter");
+        assert!(
+            !event_match,
+            "write event should be blocked by delete-only filter"
+        );
     }
 
     #[test]

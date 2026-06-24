@@ -59,8 +59,7 @@ impl Debouncer {
 
         // Record this fire.  EventType::Create is used as the sentinel since
         // per-file debouncing ignores event type.
-        self.last_fired
-            .insert((path_owned, EventType::Create), now);
+        self.last_fired.insert((path_owned, EventType::Create), now);
         true
     }
 }

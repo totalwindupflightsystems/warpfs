@@ -155,8 +155,7 @@ mod tests {
 /// Set `user.vfs.<name>` on the file at `path` to `value`.
 pub fn set_vfs_xattr(path: &Path, name: &str, value: &str) -> Result<(), MetadataError> {
     let attr = full_name(name);
-    xattr::set(path, &attr, value.as_bytes())
-        .map_err(|e| MetadataError::Xattr(e.to_string()))
+    xattr::set(path, &attr, value.as_bytes()).map_err(|e| MetadataError::Xattr(e.to_string()))
 }
 
 /// Get `user.vfs.<name>` from the file at `path`.

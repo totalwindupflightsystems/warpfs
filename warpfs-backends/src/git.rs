@@ -37,6 +37,7 @@ pub struct GitBackendConfig {
 pub struct GitBackend {
     config: GitBackendConfig,
     worktree: PathBuf,
+    #[allow(dead_code)]
     repo: Repository,
 }
 
@@ -50,7 +51,10 @@ impl GitBackend {
         let worktree = config
             .cache_dir
             .clone()
-            .unwrap_or_else(|| PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| "/tmp".into())).join(".warpfs/worktrees"))
+            .unwrap_or_else(|| {
+                PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| "/tmp".into()))
+                    .join(".warpfs/worktrees")
+            })
             .join(sanitize_name(&config.url));
 
         let repo = if worktree.join(".git").exists() {
@@ -76,12 +80,18 @@ impl GitBackend {
             repo
         };
 
-        Ok(GitBackend { config, worktree, repo })
+        Ok(GitBackend {
+            config,
+            worktree,
+            repo,
+        })
     }
 
     /// Resolve a virtual path within this backend to the real filesystem path.
     pub fn resolve(&self, virtual_path: &str) -> GitResult<PathBuf> {
-        let rel = virtual_path.strip_prefix(&self.config.at).unwrap_or(virtual_path);
+        let rel = virtual_path
+            .strip_prefix(&self.config.at)
+            .unwrap_or(virtual_path);
         let real = self.worktree.join(rel.trim_start_matches('/'));
         if !real.exists() {
             return Err(GitError::NotFound(real));
@@ -118,9 +128,7 @@ fn sanitize_name(url: &str) -> String {
     url.replace("https://", "")
         .replace("http://", "")
         .replace("git@", "")
-        .replace(':', "_")
-        .replace('/', "_")
-        .replace('.', "_")
+        .replace([':', '/', '.'], "_")
 }
 
 /// Check if the repo's last fetch is older than `interval_secs`.
@@ -308,10 +316,12 @@ mod tests {
         let result = backend.resolve("/vfs/repo/nonexistent.txt");
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("repository not found")
+        assert!(
+            err.to_string().contains("repository not found")
                 || err.to_string().contains("not found"),
-                "expected NotFound, got: {}",
-                err);
+            "expected NotFound, got: {}",
+            err
+        );
     }
 
     #[test]
@@ -409,8 +419,7 @@ mod tests {
         let fetch_head = git_dir.join("FETCH_HEAD");
         std::fs::write(&fetch_head, "stale\n").unwrap();
 
-        let two_hours_ago = std::time::SystemTime::now()
-            - std::time::Duration::from_secs(7200);
+        let two_hours_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(7200);
         filetime::set_file_mtime(&fetch_head, two_hours_ago.into()).unwrap();
 
         assert!(should_pull(tmp.path(), 3600));

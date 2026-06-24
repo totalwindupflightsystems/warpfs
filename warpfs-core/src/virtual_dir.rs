@@ -14,7 +14,7 @@ use crate::manifest::Manifest;
 pub struct DirEntry {
     pub name: String,
     #[serde(rename = "type")]
-    pub entry_type: String,    // "file" or "directory"
+    pub entry_type: String, // "file" or "directory"
     pub backend: Option<String>,
     pub size: Option<u64>,
     pub r#virtual: bool,
@@ -92,7 +92,9 @@ pub fn resolve_path(manifest: &Manifest, virtual_path: &str) -> Option<ResolvedP
                 real_path: cache_path
                     .as_ref()
                     .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|| format!("s3://{}/{}", s3.bucket, s3.prefix.as_deref().unwrap_or(""))),
+                    .unwrap_or_else(|| {
+                        format!("s3://{}/{}", s3.bucket, s3.prefix.as_deref().unwrap_or(""))
+                    }),
                 backend: "s3".to_string(),
                 cached: cache_path.as_ref().map(|p| p.exists()).unwrap_or(false),
                 sync_status: "unknown".to_string(),
@@ -103,7 +105,11 @@ pub fn resolve_path(manifest: &Manifest, virtual_path: &str) -> Option<ResolvedP
     // Check remote git backends
     for remote in &manifest.backends.remote {
         if virtual_path.starts_with(&remote.at) {
-            let worktree = format!("{}/{}", remote.cache.as_deref().unwrap_or("/tmp"), remote.url.replace('/', "_"));
+            let worktree = format!(
+                "{}/{}",
+                remote.cache.as_deref().unwrap_or("/tmp"),
+                remote.url.replace('/', "_")
+            );
             let exists = Path::new(&worktree).exists();
             return Some(ResolvedPath {
                 real_path: worktree,
@@ -135,6 +141,10 @@ pub fn resolve_path(manifest: &Manifest, virtual_path: &str) -> Option<ResolvedP
         real_path: resolved.to_string_lossy().to_string(),
         backend: "local".to_string(),
         cached: exists,
-        sync_status: if exists { "synced".to_string() } else { "not found on disk".to_string() },
+        sync_status: if exists {
+            "synced".to_string()
+        } else {
+            "not found on disk".to_string()
+        },
     })
 }

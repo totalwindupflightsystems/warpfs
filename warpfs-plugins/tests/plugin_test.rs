@@ -63,13 +63,13 @@ fn test_host_functions_add_edge_and_warning() {
     )
     .unwrap();
     assert_eq!(hf.edges.len(), 1);
-    assert_eq!(hf.edges[0], ("a.go".into(), "b.go".into(), "imports".into()));
+    assert_eq!(
+        hf.edges[0],
+        ("a.go".into(), "b.go".into(), "imports".into())
+    );
 
-    hf.call_host_function(
-        "emit_warning",
-        &["main.rs".into(), "unsafe block".into()],
-    )
-    .unwrap();
+    hf.call_host_function("emit_warning", &["main.rs".into(), "unsafe block".into()])
+        .unwrap();
     assert_eq!(hf.warnings.len(), 1);
     assert_eq!(hf.warnings[0], ("main.rs".into(), "unsafe block".into()));
 }
@@ -79,18 +79,11 @@ fn test_host_functions_set_xattr() {
     let mut hf = HostFunctions::new();
     hf.call_host_function(
         "set_xattr",
-        &[
-            "file.go".into(),
-            "user.vfs.feature".into(),
-            "auth".into(),
-        ],
+        &["file.go".into(), "user.vfs.feature".into(), "auth".into()],
     )
     .unwrap();
     let result = hf
-        .call_host_function(
-            "get_xattr",
-            &["file.go".into(), "user.vfs.feature".into()],
-        )
+        .call_host_function("get_xattr", &["file.go".into(), "user.vfs.feature".into()])
         .unwrap();
     assert_eq!(result, "auth");
 }
@@ -191,7 +184,7 @@ fn test_runtime_host_functions_mut() {
 #[test]
 fn test_registry_discover_nonexistent_dir() {
     // Non-existent directory returns empty vec, not an error.
-    let manifests = PluginRegistry::discover(std::path::Path::new("/nonexistent/path/xyz"))
-        .unwrap();
+    let manifests =
+        PluginRegistry::discover(std::path::Path::new("/nonexistent/path/xyz")).unwrap();
     assert!(manifests.is_empty());
 }

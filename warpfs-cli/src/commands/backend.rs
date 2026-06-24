@@ -56,50 +56,54 @@ pub fn run_list() -> Result<()> {
     }
 
     match std::fs::read_to_string(manifest_path) {
-        Ok(contents) => {
-            match serde_yaml::from_str::<serde_yaml::Value>(&contents) {
-                Ok(manifest) => {
-                    let backends = manifest.get("backends").cloned().unwrap_or_default();
-                    let s3_backends = backends.get("s3");
-                    let remote_backends = backends.get("remote");
-                    let local_backends = backends.get("local");
+        Ok(contents) => match serde_yaml::from_str::<serde_yaml::Value>(&contents) {
+            Ok(manifest) => {
+                let backends = manifest.get("backends").cloned().unwrap_or_default();
+                let s3_backends = backends.get("s3");
+                let remote_backends = backends.get("remote");
+                let local_backends = backends.get("local");
 
-                    let mut found = false;
+                let mut found = false;
 
-                    if let Some(s3_list) = s3_backends.and_then(|v| v.as_sequence()) {
-                        for s3 in s3_list {
-                            let bucket = s3.get("bucket").and_then(|v| v.as_str()).unwrap_or("?");
-                            let prefix = s3.get("prefix").and_then(|v| v.as_str()).unwrap_or("");
-                            let at = s3.get("at").and_then(|v| v.as_str()).unwrap_or("?");
-                            let region = s3.get("region").and_then(|v| v.as_str()).unwrap_or("?");
-                            let writable = s3.get("writable").and_then(|v| v.as_bool()).unwrap_or(false);
-                            println!("s3  s3://{}/{}  {}  region={}, rw={}, status=configured", bucket, prefix, at, region, writable);
-                            found = true;
-                        }
-                    }
-                    if let Some(remote_list) = remote_backends.and_then(|v| v.as_sequence()) {
-                        for r in remote_list {
-                            let url = r.get("url").and_then(|v| v.as_str()).unwrap_or("?");
-                            let at = r.get("at").and_then(|v| v.as_str()).unwrap_or("?");
-                            println!("git {}  {}  status=configured", url, at);
-                            found = true;
-                        }
-                    }
-                    if let Some(local_list) = local_backends.and_then(|v| v.as_sequence()) {
-                        for l in local_list {
-                            let path = l.get("path").and_then(|v| v.as_str()).unwrap_or("?");
-                            let at = l.get("at").and_then(|v| v.as_str()).unwrap_or("?");
-                            println!("local  {}  {}  status=configured", path, at);
-                            found = true;
-                        }
-                    }
-                    if !found {
-                        println!("No backends configured in manifest.");
+                if let Some(s3_list) = s3_backends.and_then(|v| v.as_sequence()) {
+                    for s3 in s3_list {
+                        let bucket = s3.get("bucket").and_then(|v| v.as_str()).unwrap_or("?");
+                        let prefix = s3.get("prefix").and_then(|v| v.as_str()).unwrap_or("");
+                        let at = s3.get("at").and_then(|v| v.as_str()).unwrap_or("?");
+                        let region = s3.get("region").and_then(|v| v.as_str()).unwrap_or("?");
+                        let writable = s3
+                            .get("writable")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        println!(
+                            "s3  s3://{}/{}  {}  region={}, rw={}, status=configured",
+                            bucket, prefix, at, region, writable
+                        );
+                        found = true;
                     }
                 }
-                Err(e) => println!("warning: could not parse manifest: {}", e),
+                if let Some(remote_list) = remote_backends.and_then(|v| v.as_sequence()) {
+                    for r in remote_list {
+                        let url = r.get("url").and_then(|v| v.as_str()).unwrap_or("?");
+                        let at = r.get("at").and_then(|v| v.as_str()).unwrap_or("?");
+                        println!("git {}  {}  status=configured", url, at);
+                        found = true;
+                    }
+                }
+                if let Some(local_list) = local_backends.and_then(|v| v.as_sequence()) {
+                    for l in local_list {
+                        let path = l.get("path").and_then(|v| v.as_str()).unwrap_or("?");
+                        let at = l.get("at").and_then(|v| v.as_str()).unwrap_or("?");
+                        println!("local  {}  {}  status=configured", path, at);
+                        found = true;
+                    }
+                }
+                if !found {
+                    println!("No backends configured in manifest.");
+                }
             }
-        }
+            Err(e) => println!("warning: could not parse manifest: {}", e),
+        },
         Err(e) => println!("warning: could not read manifest: {}", e),
     }
     Ok(())
