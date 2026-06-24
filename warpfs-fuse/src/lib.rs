@@ -27,9 +27,4 @@ pub struct FuseConfig {
     pub max_write: u32,
 }
 
-/// Permission mode enforced by the kernel.
-pub struct PermissionRule {
-    pub paths: Vec<String>, // glob patterns
-    pub mode: u32,          // octal (0444, 0644)
-    pub allow_delete: bool,
-}
+pub use warpfs_permissions::PermissionRule;

@@ -180,7 +180,7 @@ Phase 7: Production — scale, benchmarks, security, bubblewrap, permissions (§
 - **Notes:** Cargo fmt found diffs in warpfs-backends/src/git.rs (long lines). Run `cargo fmt` first, then `cargo clippy` to fix warnings. Common clippy issues: redundant closures, unnecessary borrows, manual range checks. Fix code, don't suppress unless genuinely unfixable.
 - **Result:** Implemented directly by foreman (deepseek-v4-pro, model match). 40 files changed (+743/-536): cargo fmt standardized all code; clippy fixed 26→0 warnings across 7 crates (from_str→parse rename, deprecated aws_config::from_env fix, allow(dead_code) annotations, unwrap→if-let pattern, filter_map→map, combined identical branches). All 29 test suites pass. Build clean. Clippy: 0 warnings.
 
-### [ ] PH7-002: warpfs-permissions crate — FUSE mode bit enforcement
+### [x] PH7-002: warpfs-permissions crate — FUSE mode bit enforcement
 - **Priority:** medium
 - **Model:** deepseek-v4-pro (direct write — model match)
 - **Files:** warpfs-permissions/ (new crate), warpfs-fuse/src/ops.rs, Cargo.toml (workspace members)
@@ -192,6 +192,7 @@ Phase 7: Production — scale, benchmarks, security, bubblewrap, permissions (§
 - **AC:** `cargo test -p warpfs_permissions` — 5+ tests (glob match .vfs, glob match src, explicit deny, not-in-rules default, write denied on 0444)
 - **Spec ref:** §5 (Permission Model), §4 manifest permissions block, Cargo.toml workspaces members
 - **Notes:** Scaffold: create warpfs-permissions/ with Cargo.toml (add serde, glob as deps), add to workspace members, stub lib.rs. Existing permissions.rs in warpfs-fuse/src/ is a start — extract into this crate.
+- **Result:** Implemented directly by foreman (deepseek-v4-pro, model match). Created warpfs-permissions/ crate (Cargo.toml + src/lib.rs: 417 lines, 20 inline tests + 1 doc test). PermissionRule, PermissionResult, PermissionOp, PermissionError, PermissionEngine types. Engine methods: from_rules(), new(), check(), compute_mode(). default_protections() mirrors existing 13 rules. Wired into warpfs-fuse: FuseConfig replaced PermissionRule with re-export, permissions.rs re-exports from new crate, ops.rs populate_directory uses engine.compute_mode() for per-file mode, open() enforces Read/Write permission checks with EACCES on denial. Full workspace 259/259 pass. Guard PASS.
 
 ### [ ] PH7-003: Bubblewrap sandboxing — agent isolation
 - **Priority:** medium
@@ -364,6 +365,87 @@ Phase 7: Production — scale, benchmarks, security, bubblewrap, permissions (§
 - **AC:** `GraphDB::related()` accepts optional relation filter and direction parameter
 - **Notes:** Currently only forward queries work (WHERE from = ?). Reverse queries need WHERE to = ? with rel filter. Cross-language edge types (tested_by, tests) were implemented in discover but never wired to graph queries.
 - **Result:** Implemented directly by foreman (deepseek-v4-pro, model differs from deepseek-v4-flash but 3-file modification = direct write). warpfs-graph: added Direction enum (Forward/Reverse) with parse(), updated GraphDB::related() to accept direction parameter, exported Direction from lib.rs. warpfs-cli: added --direction flag to RelatedArgs, updated run_related() to pass direction. warpfs-mcp: replaced best-effort group_by_dependency() hack with db.related() using proper relation+direction params, updated vfs_graph_related inputSchema. Updated edges_test.rs call site. Full workspace 236/236 pass. Guard PASS.
+
+---
+
+### Task: Auto-classification — detect entrypoints, tests, roles without manual tagging
+
+**Status:** pending
+
+**Research basis:**
+- `tree-sitter-analyzer` (PyPI, v1.10.4): 13-language call-graph indexing, per-language callee resolvers, detects main functions, test files, library vs application patterns. Uses tree-sitter queries to classify code structurally.
+- OpenMetadata: Regex-based auto-classification for data columns — applicable pattern for filename/extension-based file classification.
+- Static analysis meta-tools (analysis-tools-dev): 600+ detectors across languages — anti-patterns, bug risks, performance, documentation.
+
+**Heuristic rules to implement (no LLM needed):**
+
+Entrypoint detection:
+- Rust: `fn main()` in any file → `role=entrypoint`
+- Python: `if __name__ == "__main__"` → `role=entrypoint`
+- Go: `package main` + `func main()` → `role=entrypoint`
+- JS/TS: `export default` + no imports from sibling modules → `role=entrypoint`
+- C/C++: `int main(` → `role=entrypoint`
+- Java: `public static void main(` → `role=entrypoint`
+
+Test detection:
+- File naming: `*_test.go`, `test_*.py`, `*.test.ts`, `*_test.rs`, `*Test.java`, `*_spec.rb`, `*.spec.ts`
+- Imports test frameworks: `import pytest`, `import unittest`, `#[cfg(test)]`, `@Test`, `describe(`
+
+Library vs Application:
+- `Cargo.toml` with `[lib]` → crate is a library
+- `setup.py` / `pyproject.toml` without entry_points → library
+- `package.json` with `"main"` field → library
+- `Cargo.toml` with `[[bin]]` → application
+
+Stability heuristics:
+- File in `src/` → more stable than `examples/` or `tests/`
+- Public API surface: `pub fn` count vs private `fn` count
+- Churn-based: files modified < 3 times in git history → `stable`
+- Version pinning: imports pinned to major version → `stable` dependency
+
+**Criteria:**
+- [ ] Implement `warpfs classify` CLI command that auto-tags files with `user.vfs.role` and `user.vfs.status`
+- [ ] Entrypoint detection works for all 9 supported languages
+- [ ] Test detection via filename patterns + AST import analysis
+- [ ] Library vs application detection based on manifest files
+- [ ] Stability heuristic based on public API surface ratio
+- [ ] `warpfs graph discover` auto-runs classification OR `warpfs init` offers it as default
+- [ ] Classification output is stored as xattrs (not content injection)
+- [ ] Verified on at least 3 repos: tokenizers (Rust+Python+JS), consensus (Go), warpfs (Rust)
+
+### Task: Go parser scaling — handle 500+ file repos
+
+**Status:** pending
+
+**Criteria:**
+- [ ] `warpfs graph discover` on hivemind (866 Go files) completes in <30s (currently 120s+ timeout)
+- [ ] Skip vendor/ directories and .git/ by default
+- [ ] Parallel file parsing (rayon or tokio) for multi-core scaling
+- [ ] AST parse results cached per-file (skip unchanged files on re-discover)
+- [ ] Progress output during discovery (parsing file 412/866...)
+- [ ] Memory: under 500MB for 1000-file repos
+
+### Task: MCP tool consistency audit — match CLI output exactly
+
+**Status:** pending
+
+**Criteria:**
+- [ ] `vfs_list_directory("/")` returns the same entries as CLI `warpfs graph stats` top deps
+- [ ] `vfs_graph_related` returns correct count — CLI shows 48 files import `net/http`, MCP must match
+- [ ] `vfs_resolve_path` returns `real_path` + `backend` + `sync_status` for all valid paths (no "not found" false negatives)
+- [ ] All 8 MCP tools tested against equivalent CLI commands on consensus repo
+- [ ] MCP tools work without requiring explicit manifest.yaml backends (fallback to local cwd)
+
+### Task: Multi-language graph discover — walk all supported languages
+
+**Status:** pending
+
+**Criteria:**
+- [ ] `warpfs graph discover` walks ALL 9 supported languages, not just the dominant one
+- [ ] Graph stats shows `X languages` where X > 1 for multi-language repos
+- [ ] Non-Go files in Go repos (.rs, .py, .ts) also parsed when present
+- [ ] Language auto-detection per file (extension-based), no manual config
+- [ ] `warpfs graph discover --language all` flag (default behavior)
 
 ## Verification (Rust — every task)
 

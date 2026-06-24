@@ -4937,6 +4937,7 @@ dependencies = [
  "tokio",
  "warpfs_core",
  "warpfs_metadata",
+ "warpfs_permissions",
 ]
 
 [[package]]
@@ -4984,6 +4985,16 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "xattr",
+]
+
+[[package]]
+name = "warpfs_permissions"
+version = "0.1.0"
+dependencies = [
+ "glob",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

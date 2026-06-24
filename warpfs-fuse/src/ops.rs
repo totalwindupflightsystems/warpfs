@@ -17,8 +17,9 @@ use fuser::{
     ReplyEntry, ReplyOpen, ReplyXattr, Request,
 };
 
-use libc::{ENODATA, ENOENT};
+use libc::{EACCES, ENODATA, ENOENT};
 
+use crate::permissions::PermissionEngine;
 use crate::FuseConfig;
 
 const ROOT_INO: u64 = 1;
@@ -51,6 +52,7 @@ pub struct WarpFS {
     files: Arc<RwLock<HashMap<u64, InodeEntry>>>,
     next_inode: AtomicU64,
     config: FuseConfig,
+    permissions: PermissionEngine,
 }
 
 impl WarpFS {
@@ -58,6 +60,7 @@ impl WarpFS {
     ///
     /// The root inode (1) is pre-populated as a directory pointing at `root`.
     pub fn new(root: PathBuf, config: FuseConfig) -> Self {
+        let permissions = PermissionEngine::from_rules(crate::permissions::default_protections());
         let mut files = HashMap::new();
         files.insert(
             ROOT_INO,
@@ -73,6 +76,7 @@ impl WarpFS {
             files: Arc::new(RwLock::new(files)),
             next_inode: AtomicU64::new(2),
             config,
+            permissions,
         }
     }
 
@@ -131,7 +135,11 @@ impl WarpFS {
             let metadata = entry.metadata();
             let (kind, size, mode) = match &metadata {
                 Ok(m) if m.is_dir() => (InodeKind::Directory, 0, 0o755),
-                Ok(m) => (InodeKind::File, m.len(), 0o644),
+                Ok(m) => (
+                    InodeKind::File,
+                    m.len(),
+                    self.permissions.compute_mode(&child_rel),
+                ),
                 Err(_) => continue,
             };
 
@@ -430,7 +438,39 @@ impl Filesystem for WarpFS {
         }
     }
 
-    fn open(&mut self, _req: &Request, _ino: u64, _flags: i32, reply: ReplyOpen) {
+    fn open(&mut self, _req: &Request, ino: u64, _flags: i32, reply: ReplyOpen) {
+        // Enforce permission check — resolve the path for this inode
+        // and verify the operation is allowed by the engine.
+        let files = self.files.read().unwrap();
+        if let Some(entry) = files.get(&ino) {
+            use crate::permissions::PermissionOp;
+            let access_mode = _flags & libc::O_ACCMODE;
+            let op = if access_mode == libc::O_WRONLY {
+                PermissionOp::Write
+            } else if access_mode == libc::O_RDWR {
+                // Check both read and write; deny if either fails
+                if self
+                    .permissions
+                    .check(&entry.path, PermissionOp::Read)
+                    .is_err()
+                    || self
+                        .permissions
+                        .check(&entry.path, PermissionOp::Write)
+                        .is_err()
+                {
+                    reply.error(EACCES);
+                    return;
+                }
+                reply.opened(0, 0);
+                return;
+            } else {
+                PermissionOp::Read
+            };
+            if self.permissions.check(&entry.path, op).is_err() {
+                reply.error(EACCES);
+                return;
+            }
+        }
         reply.opened(0, 0);
     }
 

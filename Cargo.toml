@@ -1,5 +1,5 @@
 [workspace]
-members = ["warpfs-core", "warpfs-metadata", "warpfs-graph", "warpfs-cli", "warpfs-mcp", "warpfs-backends", "warpfs-triggers", "warpfs-fuse", "warpfs-plugins"]
+members = ["warpfs-core", "warpfs-metadata", "warpfs-graph", "warpfs-cli", "warpfs-mcp", "warpfs-backends", "warpfs-triggers", "warpfs-fuse", "warpfs-plugins", "warpfs-permissions"]
 resolver = "2"
 
 [workspace.package]
