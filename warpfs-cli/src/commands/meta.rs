@@ -26,7 +26,9 @@ pub fn run(path: &str, set_name: Option<&str>, value: Option<&str>) -> Result<()
         let v = v.replace("\\n", "\n");
         xattr::set_vfs_xattr(file_path, name, &v)
             .with_context(|| format!("failed to set xattr user.vfs.{name} on {path}"))?;
-        println!("Set user.vfs.{name} = {v} on {path}");
+        // Display the canonical name (strip user.vfs. prefix if user passed it).
+        let display_name = name.strip_prefix("user.vfs.").unwrap_or(name);
+        println!("Set user.vfs.{display_name} = {v} on {path}");
         return Ok(());
     }
 

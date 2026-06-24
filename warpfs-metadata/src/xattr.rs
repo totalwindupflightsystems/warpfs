@@ -11,8 +11,40 @@ use std::path::Path;
 use crate::MetadataError;
 
 /// Build the full attribute name: `user.vfs.<name>`.
+///
+/// Idempotent — if `name` already has a `user.vfs.` prefix, it is
+/// stripped first. This prevents double- or triple-prefixing when the
+/// caller passes a fully-qualified name.
 fn full_name(name: &str) -> String {
-    format!("user.vfs.{}", name)
+    let stripped = name.strip_prefix("user.vfs.").unwrap_or(name);
+    format!("user.vfs.{}", stripped)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn full_name_no_prefix() {
+        assert_eq!(full_name("feature"), "user.vfs.feature");
+    }
+
+    #[test]
+    fn full_name_with_prefix_is_idempotent() {
+        assert_eq!(full_name("user.vfs.feature"), "user.vfs.feature");
+    }
+
+    #[test]
+    fn full_name_empty_name() {
+        assert_eq!(full_name(""), "user.vfs.");
+    }
+
+    #[test]
+    fn full_name_nested_prefix() {
+        // Only strips ONE level — "user.vfs.user.vfs.foo" → "user.vfs.user.vfs.foo"
+        // This is correct: the stripped part is "user.vfs." leaving "user.vfs.foo".
+        assert_eq!(full_name("user.vfs.user.vfs.foo"), "user.vfs.user.vfs.foo");
+    }
 }
 
 /// Set `user.vfs.<name>` on the file at `path` to `value`.

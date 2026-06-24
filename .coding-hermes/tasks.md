@@ -255,9 +255,9 @@
 - **Notes:** 484 lines source with only 61 lines of tests (mostly debounce). Pure helper functions are untested: mask_to_event_type, event_type_string, matches_pattern, log_trigger_action. Also test the match-and-filter logic (pattern match + event-type gate) without running the full event loop.
 - **Result:** Implemented directly by foreman (deepseek-v4-pro, model match). engine.rs +197 lines: 20 inline unit tests (mask_to_event_type ×6, event_type_string ×3, matches_pattern ×5, log_trigger_action ×3, match-and-filter ×3). lib.rs: +Debug derive on EventType (needed by assert_eq!). trigger_test.rs: removed 2 broken matches_pattern tests that created TriggerEngine but never called matches_pattern. Full workspace 164+ tests pass. Guard PASS. warpfs-triggers: 26 tests (20 inline + 6 integration).
 
-## [ ] Phase 5: Fix xattr prefix doubling — `--set` should strip `user.vfs.` if present
+## [x] Phase 5: Fix xattr prefix doubling — `--set` should strip `user.vfs.` if present
 - **Priority:** high
-- **Model:** deepseek-v4-flash
+- **Model:** deepseek-v4-pro (direct write — 2-file mechanical fix)
 - **Files:** warpfs-cli/src/commands/meta.rs, warpfs-metadata/src/xattr.rs
 - **AC:** `warpfs meta --set user.vfs.feature` stores as `user.vfs.feature` not `user.vfs.user.vfs.feature`
 - **AC:** `warpfs meta --set feature` stores as `user.vfs.feature` (no prefix) — existing behavior preserved
@@ -266,6 +266,7 @@
 - **AC:** Existing tests pass; xattr roundtrip test updated for single-prefix storage
 - **Notes:** Root cause: CLI passes raw `--set` value to `set_vfs_xattr()` which unconditionally prepends `user.vfs.`. If the user passes `user.vfs.feature`, the stored name becomes `user.vfs.user.vfs.feature`. Fix: strip `user.vfs.` prefix from --set value if present before calling set_vfs_xattr, OR make set_vfs_xattr idempotent.
 - **Found during:** Integration testing on sharkdp/fd project. FUSE+getfattr works by accidental double-prefix match. CLI through FUSE fails with triple-prefix.
+- **Result:** Implemented directly by foreman (deepseek-v4-pro). xattr.rs: `full_name()` now strips `user.vfs.` prefix if present (idempotent). +4 inline unit tests (no prefix, with prefix idempotent, empty name, nested prefix once-only). meta.rs: display message strips prefix for consistent output. Full workspace 228+ tests pass. Guard PASS.
 
 ## [ ] Phase 5: Fix DuckDB path — graph.db vs graph.duckdb mismatch
 - **Priority:** medium
