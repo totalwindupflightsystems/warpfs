@@ -278,7 +278,7 @@
 - **Notes:** `GraphDB::open` doc says `.duckdb` but code opens `.db`. MCP constant says `.duckdb` but file is `.db`. Pick one and make both crates agree. Prefer `.db` since DuckDB auto-detects format.
 - **Result:** Implemented directly by foreman. Standardized everything to `.db`: warpfs-graph/src/graph.rs (doc comments), warpfs-graph/src/duckdb.rs (open_default path), warpfs-mcp/src/tools/mod.rs (GRAPH_DB_PATH constant), warpfs-mcp/tests/mcp_test.rs (comments). Build clean, 237/237 tests pass, guard PASS.
 
-## [ ] Phase 5: Fix graph dedup — re-running discover doubles edges
+## [x] Phase 5: Fix graph dedup — re-running discover doubles edges
 - **Priority:** high
 - **Model:** deepseek-v4-flash
 - **Files:** warpfs-graph/src/graph.rs, warpfs-metadata/src/inventory.rs
@@ -286,6 +286,7 @@
 - **AC:** `append_edges_deduped` actually deduplicates on write
 - **AC:** Existing unique edges preserved; only duplicates filtered
 - **Notes:** Discovered during fd project testing: 127 edges → 254 after second run. `append_edges_deduped` exists in inventory.rs but may not be wired correctly in the discover pipeline, or the DuckDB load path doesn't deduplicate.
+- **Result:** Implemented directly by foreman (deepseek-v4-pro, 2-file mechanical fix). Root cause: JSONL path used `append_edges_deduped` but DuckDB path used `INSERT INTO` with no unique constraint. Fix: added `CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_unique ON edges("from", "to", rel)` to `init_schema()`, changed `INSERT INTO` → `INSERT OR IGNORE INTO` in `insert_edges()`. Added `test_graph_insert_dedup` (3 scenarios: full-duplicate second insert, mix of old+new). Full workspace 238+ tests pass. Guard PASS.
 
 ## [ ] Phase 5: Implement reverse graph queries — `imported_by`, `tested_by`, `tests`
 - **Priority:** medium

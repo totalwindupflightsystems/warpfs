@@ -58,6 +58,10 @@ impl GraphDB {
             "CREATE INDEX IF NOT EXISTS idx_edges_from_rel ON edges(\"from\", rel)",
             params![],
         )?;
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_unique ON edges(\"from\", \"to\", rel)",
+            params![],
+        )?;
         Ok(())
     }
 
@@ -65,7 +69,7 @@ impl GraphDB {
     pub fn insert_edges(&self, edges: &[Edge]) -> GraphResult<()> {
         for edge in edges {
             self.conn.execute(
-                "INSERT INTO edges (\"from\", \"to\", rel) VALUES (?, ?, ?)",
+                "INSERT OR IGNORE INTO edges (\"from\", \"to\", rel) VALUES (?, ?, ?)",
                 params![edge.from, edge.to, edge.rel],
             )?;
         }
