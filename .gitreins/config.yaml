@@ -6,13 +6,13 @@ guards:
   test_command: cargo test
   static_analysis: false
 evaluator:
-  max_iterations: 50
-  max_time: 10m
-  max_input_tokens: '-1'
+  max_iterations: 25
+  max_time: 5m
+  max_input_tokens: 2.0M
   max_output_tokens: 0.5M
   tool_call_weight: 0.1
 defaults:
-  model: deepseek-v4-flash
+  model: deepseek-v4-pro
   check_for_updates: true
 history:
   enabled: true

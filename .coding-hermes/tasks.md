@@ -277,6 +277,15 @@
 - **AC:** Constant `GRAPH_DB_PATH` used consistently across graph and MCP crates
 - **Notes:** `GraphDB::open` doc says `.duckdb` but code opens `.db`. MCP constant says `.duckdb` but file is `.db`. Pick one and make both crates agree. Prefer `.db` since DuckDB auto-detects format.
 
+## [ ] Phase 5: Fix graph dedup — re-running discover doubles edges
+- **Priority:** high
+- **Model:** deepseek-v4-flash
+- **Files:** warpfs-graph/src/graph.rs, warpfs-metadata/src/inventory.rs
+- **AC:** Running `warpfs graph discover` twice produces same edge count (no doubling)
+- **AC:** `append_edges_deduped` actually deduplicates on write
+- **AC:** Existing unique edges preserved; only duplicates filtered
+- **Notes:** Discovered during fd project testing: 127 edges → 254 after second run. `append_edges_deduped` exists in inventory.rs but may not be wired correctly in the discover pipeline, or the DuckDB load path doesn't deduplicate.
+
 ## [ ] Phase 5: Implement reverse graph queries — `imported_by`, `tested_by`, `tests`
 - **Priority:** medium
 - **Model:** deepseek-v4-flash
