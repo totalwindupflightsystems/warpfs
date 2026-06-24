@@ -8,6 +8,35 @@ use warpfs_metadata::inventory::Edge;
 
 use crate::error::GraphResult;
 
+/// Direction for edge queries: forward (`"from" = ?`) or reverse (`"to" = ?`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    /// Query outgoing edges: `WHERE "from" = ?`.
+    Forward,
+    /// Query incoming edges: `WHERE "to" = ?`.
+    Reverse,
+}
+
+impl std::fmt::Display for Direction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Direction::Forward => write!(f, "forward"),
+            Direction::Reverse => write!(f, "reverse"),
+        }
+    }
+}
+
+impl Direction {
+    /// Parse a direction string.  Recognises "reverse", "incoming", "in", and
+    /// "backward" (case-insensitive).  Everything else defaults to `Forward`.
+    pub fn parse(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "reverse" | "incoming" | "in" | "backward" => Direction::Reverse,
+            _ => Direction::Forward,
+        }
+    }
+}
+
 /// Manages the DuckDB graph database at `.vfs/graph/graph.db`.
 pub struct GraphDB {
     conn: Connection,
@@ -135,20 +164,33 @@ impl GraphDB {
         Ok((froms, tos))
     }
 
-    /// Query edges where `from = ?`, optionally filtered by relation type.
+    /// Query edges for a file path, optionally filtered by relation type and
+    /// direction.
     ///
-    /// Returns an empty `Vec` if no edges match. Use [`count_edges_from`] to
-    /// distinguish "no edges" from "file not in graph."
-    pub fn related(&self, from: &str, rel_filter: Option<&str>) -> GraphResult<Vec<Edge>> {
+    /// - `Forward` (default): `WHERE "from" = ?` — outgoing edges.
+    /// - `Reverse`: `WHERE "to" = ?` — incoming edges (e.g. `imported_by`).
+    ///
+    /// Returns an empty `Vec` if no edges match.
+    pub fn related(
+        &self,
+        path: &str,
+        rel_filter: Option<&str>,
+        direction: Direction,
+    ) -> GraphResult<Vec<Edge>> {
+        let column = match direction {
+            Direction::Forward => "\"from\"",
+            Direction::Reverse => "\"to\"",
+        };
+
         let (sql, params_vec): (&str, Vec<Box<dyn duckdb::ToSql>>) = if let Some(rel) = rel_filter {
             (
-                "SELECT \"from\", \"to\", rel FROM edges WHERE \"from\" = ? AND rel = ?",
-                vec![Box::new(from.to_string()), Box::new(rel.to_string())],
+                &*format!("SELECT \"from\", \"to\", rel FROM edges WHERE {column} = ? AND rel = ?"),
+                vec![Box::new(path.to_string()), Box::new(rel.to_string())],
             )
         } else {
             (
-                "SELECT \"from\", \"to\", rel FROM edges WHERE \"from\" = ?",
-                vec![Box::new(from.to_string())],
+                &*format!("SELECT \"from\", \"to\", rel FROM edges WHERE {column} = ?"),
+                vec![Box::new(path.to_string())],
             )
         };
         let param_refs: Vec<&dyn duckdb::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();

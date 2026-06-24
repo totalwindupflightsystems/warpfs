@@ -6,3 +6,4 @@
 target/
 *research*.md
 .gitreins/config.yaml.bak*
+/.vfs/

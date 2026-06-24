@@ -95,6 +95,11 @@ struct RelatedArgs {
     /// Filter edges by relation type (e.g., "imports", "calls").
     #[arg(long)]
     relation: Option<String>,
+
+    /// Query direction: "forward" (outgoing edges, default) or "reverse"
+    /// (incoming edges, e.g. "imported_by", "tested_by").
+    #[arg(long)]
+    direction: Option<String>,
 }
 
 #[derive(clap::Args)]
@@ -160,7 +165,7 @@ fn main() {
         Commands::Meta(args) => meta::run(&args.path, args.set.as_deref(), args.value.as_deref()),
         Commands::Graph(GraphCommand::Discover(args)) => graph::run_discover(args.workspace),
         Commands::Graph(GraphCommand::Stats) => graph::run_stats(),
-        Commands::Graph(GraphCommand::Related(args)) => graph::run_related(&args.path, args.relation.as_deref()),
+        Commands::Graph(GraphCommand::Related(args)) => graph::run_related(&args.path, args.relation.as_deref(), args.direction.as_deref()),
         Commands::Graph(GraphCommand::Impact(args)) => graph::run_impact(&args.path, args.max_depth, args.format.as_deref(), args.external),
         Commands::Graph(GraphCommand::RuleList) => graph::run_rule_list(),
         Commands::Graph(GraphCommand::RuleCheck(args)) => graph::run_rule_check(&args.name),

@@ -128,11 +128,17 @@ pub fn run_discover(workspace: bool) -> Result<()> {
     Ok(())
 }
 
-/// Query all edges where `from = path`, optionally filtered by relation type.
+/// Query all edges for a file path, optionally filtered by relation type and
+/// direction.
+///
+/// - Default (no `--direction` or `--direction forward`): outgoing edges
+///   (WHERE "from" = ?).
+/// - `--direction reverse`: incoming edges (WHERE "to" = ?), e.g.
+///   `imported_by`, `tested_by`.
 ///
 /// Exits with code 1 and a "not found in graph" message when the path does not
 /// appear in the `edges` table at all (neither as `from` nor `to`).
-pub fn run_related(path: &str, relation: Option<&str>) -> Result<()> {
+pub fn run_related(path: &str, relation: Option<&str>, direction: Option<&str>) -> Result<()> {
     let cwd = std::env::current_dir().context("failed to determine the current directory")?;
     let graph_db = cwd.join(".vfs").join("graph").join("graph.db");
 
@@ -151,14 +157,16 @@ pub fn run_related(path: &str, relation: Option<&str>) -> Result<()> {
         anyhow::bail!("not found in graph");
     }
 
+    let dir = direction.map(|d| warpfs_graph::Direction::parse(d)).unwrap_or(warpfs_graph::Direction::Forward);
+
     let edges = graph
-        .related(path, relation)
+        .related(path, relation, dir)
         .context("failed to query related edges")?;
 
     if edges.is_empty() && relation.is_some() {
         println!(
-            "No edges found for '{}' with relation filter '{}'.",
-            path,
+            "No {} edges found for '{}' with relation filter '{}'.",
+            dir, path,
             relation.unwrap()
         );
         return Ok(());
@@ -166,7 +174,11 @@ pub fn run_related(path: &str, relation: Option<&str>) -> Result<()> {
 
     // Print edges in a readable format.
     if edges.is_empty() {
-        println!("No outgoing edges from '{}'.", path);
+        let label = match dir {
+            warpfs_graph::Direction::Forward => "outgoing",
+            warpfs_graph::Direction::Reverse => "incoming",
+        };
+        println!("No {} edges for '{}'.", label, path);
     } else {
         for edge in &edges {
             println!("{}  →  {}  ({})", edge.from, edge.to, edge.rel);

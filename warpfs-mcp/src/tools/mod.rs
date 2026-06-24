@@ -46,13 +46,21 @@ pub fn list_tools() -> Vec<Tool> {
         },
         Tool {
             name: "vfs_graph_related".into(),
-            description: "Find files related to the given file via the dependency graph.".into(),
+            description: "Find files related to the given file via the dependency graph. Supports forward (outgoing) and reverse (incoming) queries.".into(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
                         "description": "File path to find related files for"
+                    },
+                    "relation": {
+                        "type": "string",
+                        "description": "Filter by relation type (e.g. 'imports', 'tested_by', 'tests')"
+                    },
+                    "direction": {
+                        "type": "string",
+                        "description": "Query direction: 'forward' (outgoing, default) or 'reverse' (incoming)"
                     }
                 },
                 "required": ["path"]
@@ -191,41 +199,40 @@ fn get_metadata(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
     Ok(serde_json::Value::Object(map))
 }
 
-/// `vfs_graph_related` — find files related to the given path.
+/// `vfs_graph_related` — find related files for a given path.
 ///
-/// The graph DB stores edges `(from, to, rel)`. Ideally we would run
-/// `SELECT "to", COUNT(*) FROM edges WHERE "from" = ? GROUP BY "to"` but the
-/// current `GraphDB` API does not expose per-file queries (the `conn` field is
-/// private and `duckdb` is not a direct dependency of this crate).
-///
-/// As a best-effort we use `group_by_dependency()` which returns the most
-/// referenced targets across the whole graph. If the input file is not among
-/// the known source files we return an empty array.
+/// Supports both forward (outgoing) and reverse (incoming) queries, with
+/// optional relation-type filtering (e.g. "imported_by", "tested_by").
 fn graph_related(arguments: &serde_json::Value) -> McpResult<serde_json::Value> {
     let target = arguments["path"]
         .as_str()
         .ok_or_else(|| McpError::Protocol("missing 'path' argument".into()))?;
 
-    // If the graph DB does not exist the graph simply hasn't been populated.
+    let relation = arguments["relation"].as_str();
+    let direction = arguments["direction"].as_str().unwrap_or("forward");
+
     if !Path::new(GRAPH_DB_PATH).exists() {
         return Ok(serde_json::Value::Array(vec![]));
     }
 
     let db = warpfs_graph::GraphDB::open(GRAPH_DB_PATH)?;
 
-    // Check whether the requested file is a known source in the graph.
-    let (froms, _tos) = db.distinct_files()?;
-    if !froms.iter().any(|f| f == target) {
+    // Check whether the requested file exists in the graph.
+    if !db.file_in_graph(target)? {
         return Ok(serde_json::Value::Array(vec![]));
     }
 
-    // Best-effort: return the most-referenced dependencies.
-    let deps = db.group_by_dependency()?;
-    let result: Vec<serde_json::Value> = deps
-        .into_iter()
-        .take(50)
-        .map(|(to, _rel, cnt)| {
-            serde_json::json!({ "file": to, "count": cnt })
+    let dir = warpfs_graph::Direction::parse(direction);
+
+    let edges = db.related(target, relation, dir)?;
+    let result: Vec<serde_json::Value> = edges
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "from": e.from,
+                "to": e.to,
+                "relation": e.rel,
+            })
         })
         .collect();
     Ok(serde_json::Value::Array(result))

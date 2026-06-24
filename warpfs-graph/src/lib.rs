@@ -16,7 +16,7 @@ pub mod parser;
 pub mod rules;
 
 pub use error::{GraphError, GraphResult};
-pub use graph::GraphDB;
+pub use graph::{Direction, GraphDB};
 pub use impact::{compute_impact, compute_impact_with_external, ImpactFile, ImpactResult};
 pub use parser::{Language, Parser};
 pub use rules::{Rule, RuleCheckResult, RuleEngine, RuleError};

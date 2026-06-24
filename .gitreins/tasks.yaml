@@ -1,133 +1,132 @@
 tasks:
-# ── Tier 2: Xattr subsystem ─────────────────────────────────
 - id: xattr-prefix-idempotency
-  title: "Xattr prefix idempotency — regression guard"
+  title: "Xattr prefix idempotency \u2014 regression guard"
   criteria:
-  - "full_name('feature') returns 'user.vfs.feature'"
-  - "full_name('user.vfs.feature') returns 'user.vfs.feature' (idempotent — no doubling)"
-  - "set_vfs_xattr with prefix, get_vfs_xattr without prefix returns same value"
-  - "list_vfs_xattrs after set with prefix returns exactly one attr: 'user.vfs.feature'"
-  - "At least 10 regression tests in xattr.rs covering set/get roundtrip with mixed prefixes"
-  - "All regression tests explicitly test the bug case: 'user.vfs.user.vfs.feature' MUST NOT appear"
-  status: pending
+  - full_name('feature') returns 'user.vfs.feature'
+  - "full_name('user.vfs.feature') returns 'user.vfs.feature' (idempotent \u2014 no\
+    \ doubling)"
+  - set_vfs_xattr with prefix, get_vfs_xattr without prefix returns same value
+  - 'list_vfs_xattrs after set with prefix returns exactly one attr: ''user.vfs.feature'''
+  - At least 10 regression tests in xattr.rs covering set/get roundtrip with mixed
+    prefixes
+  - 'All regression tests explicitly test the bug case: ''user.vfs.user.vfs.feature''
+    MUST NOT appear'
+  status: complete
   created_at: '2026-06-24T03:00:00+00:00'
-
+  completed_at: '2026-06-24T05:25:37.433092+00:00'
 - id: xattr-fuse-roundtrip
-  title: "Xattr through FUSE mount — end-to-end"
+  title: "Xattr through FUSE mount \u2014 end-to-end"
   criteria:
-  - "warpfs meta --set feature --value foo stores as user.vfs.feature (single prefix)"
-  - "getfattr -n user.vfs.feature <mount/file> returns 'foo'"
-  - "warpfs meta <mount/file> returns 'feature: foo' (was broken with triple-prefix)"
-  - "warpfs meta --set user.vfs.feature --value bar stores identically (idempotent)"
-  - "getfattr -d <mount/file> lists user.vfs.feature exactly once"
-  - "Untagged files return 'No such attribute' via getfattr, not empty string"
+  - warpfs meta --set feature --value foo stores as user.vfs.feature (single prefix)
+  - getfattr -n user.vfs.feature <mount/file> returns 'foo'
+  - 'warpfs meta <mount/file> returns ''feature: foo'' (was broken with triple-prefix)'
+  - warpfs meta --set user.vfs.feature --value bar stores identically (idempotent)
+  - getfattr -d <mount/file> lists user.vfs.feature exactly once
+  - Untagged files return 'No such attribute' via getfattr, not empty string
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
-# ── Tier 2: Graph engine ─────────────────────────────────────
 - id: graph-dedup
-  title: "Graph deduplication — re-discover must not double edges"
+  title: "Graph deduplication \u2014 re-discover must not double edges"
   criteria:
-  - "Running warpfs graph discover twice on same project produces identical edge count"
-  - "append_edges_deduped filters by (from, to, rel) tuple before append"
-  - "DuckDB loaded from edges.jsonl has no duplicate rows after re-discover"
-  - "graph stats: total_edges equals unique edge count, no duplicates"
-  - "Existing unique edges preserved when new edges added (only new ones appended)"
+  - Running warpfs graph discover twice on same project produces identical edge count
+  - append_edges_deduped filters by (from, to, rel) tuple before append
+  - DuckDB loaded from edges.jsonl has no duplicate rows after re-discover
+  - 'graph stats: total_edges equals unique edge count, no duplicates'
+  - Existing unique edges preserved when new edges added (only new ones appended)
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
 - id: graph-reverse-queries
-  title: "Reverse graph queries — imported_by, tested_by, tests"
+  title: "Reverse graph queries \u2014 imported_by, tested_by, tests"
   criteria:
-  - "warpfs graph related pkg:serde --relation imported_by returns all files importing serde"
-  - "warpfs graph related <test_file> --relation tests returns the source file it tests"
-  - "warpfs graph related <source_file> --relation tested_by returns its test files"
-  - "GraphDB::related() accepts direction parameter (forward/reverse) with rel filter"
-  - "Cross-language test detection: *_test.go, test_*.py, *.test.ts, *_test.rs, *Test.java all mapped"
+  - warpfs graph related pkg:serde --relation imported_by returns all files importing
+    serde
+  - warpfs graph related <test_file> --relation tests returns the source file it tests
+  - warpfs graph related <source_file> --relation tested_by returns its test files
+  - GraphDB::related() accepts direction parameter (forward/reverse) with rel filter
+  - 'Cross-language test detection: *_test.go, test_*.py, *.test.ts, *_test.rs, *Test.java
+    all mapped'
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
 - id: graph-db-path
-  title: "DuckDB path consistency — graph.db vs graph.duckdb"
+  title: "DuckDB path consistency \u2014 graph.db vs graph.duckdb"
   criteria:
-  - "GRAPH_DB_PATH constant used in exactly one place, shared by graph and MCP crates"
-  - "graph discover writes to .vfs/graph/graph.db"
-  - "MCP vfs_graph_stats opens .vfs/graph/graph.db without symlink workaround"
-  - "No manual symlink required after fresh init + discover for MCP tools to work"
-  - "Both graph and MCP crates reference the same constant, not hardcoded strings"
+  - GRAPH_DB_PATH constant used in exactly one place, shared by graph and MCP crates
+  - graph discover writes to .vfs/graph/graph.db
+  - MCP vfs_graph_stats opens .vfs/graph/graph.db without symlink workaround
+  - No manual symlink required after fresh init + discover for MCP tools to work
+  - Both graph and MCP crates reference the same constant, not hardcoded strings
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
-# ── Tier 2: FUSE filesystem ──────────────────────────────────
 - id: fuse-readdir
-  title: "FUSE readdir — ls must not hang on any directory"
+  title: "FUSE readdir \u2014 ls must not hang on any directory"
   criteria:
-  - "ls <mount>/ returns directory listing under 3 seconds"
-  - "ls <mount>/src/ lists subdirectory contents under 3 seconds"
-  - "Root directory children detected correctly (Path::new('file').parent() = Some('') handled)"
-  - "cat <mount>/<file> returns correct file content"
-  - "FUSE daemon starts, serves requests, unmounts cleanly without zombie processes"
-  - "readdir offset handling works — '.' and '..' entries returned, children follow correctly"
+  - ls <mount>/ returns directory listing under 3 seconds
+  - ls <mount>/src/ lists subdirectory contents under 3 seconds
+  - Root directory children detected correctly (Path::new('file').parent() = Some('')
+    handled)
+  - cat <mount>/<file> returns correct file content
+  - FUSE daemon starts, serves requests, unmounts cleanly without zombie processes
+  - "readdir offset handling works \u2014 '.' and '..' entries returned, children\
+    \ follow correctly"
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
 - id: fuse-permissions
-  title: "FUSE permission enforcement — manifest-driven mode bits"
+  title: "FUSE permission enforcement \u2014 manifest-driven mode bits"
   criteria:
-  - "Permission mode 0444 applied to protected paths (read-only enforcement)"
-  - "Permission mode 0644 applied to workspace files"
-  - "Read attempt on read-only S3 mount returns EACCES"
-  - "FUSE config respects allow_other flag from manifest"
-  - "auto_unmount cleans up on daemon exit"
+  - Permission mode 0444 applied to protected paths (read-only enforcement)
+  - Permission mode 0644 applied to workspace files
+  - Read attempt on read-only S3 mount returns EACCES
+  - FUSE config respects allow_other flag from manifest
+  - auto_unmount cleans up on daemon exit
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
-# ── Tier 2: MCP server ───────────────────────────────────────
 - id: mcp-tool-registry
-  title: "MCP server — 8 tools registered and functional"
+  title: "MCP server \u2014 8 tools registered and functional"
   criteria:
-  - "tools/list returns exactly 8 tools: vfs_get_metadata, vfs_graph_related, vfs_graph_stats, vfs_graph_impact, vfs_rule_list, vfs_rule_check, vfs_list_directory, vfs_resolve_path"
-  - "vfs_graph_stats returns nonzero total_edges, unique_files, unique_dependencies after discover"
-  - "vfs_get_metadata with valid path returns xattrs; nonexistent path returns error"
-  - "vfs_graph_impact with max_depth returns transitive dependents"
-  - "vfs_rule_check('stale-files') returns results or structured error if no manifest"
-  - "vfs_list_directory returns virtual directory entries with name, type, backend, size"
-  - "vfs_resolve_path returns real_path, backend, cached, sync_status"
+  - 'tools/list returns exactly 8 tools: vfs_get_metadata, vfs_graph_related, vfs_graph_stats,
+    vfs_graph_impact, vfs_rule_list, vfs_rule_check, vfs_list_directory, vfs_resolve_path'
+  - vfs_graph_stats returns nonzero total_edges, unique_files, unique_dependencies
+    after discover
+  - vfs_get_metadata with valid path returns xattrs; nonexistent path returns error
+  - vfs_graph_impact with max_depth returns transitive dependents
+  - vfs_rule_check('stale-files') returns results or structured error if no manifest
+  - vfs_list_directory returns virtual directory entries with name, type, backend,
+    size
+  - vfs_resolve_path returns real_path, backend, cached, sync_status
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
 - id: mcp-graph-consistency
-  title: "MCP graph tools match CLI output exactly"
+  title: MCP graph tools match CLI output exactly
   criteria:
-  - "vfs_graph_stats returns same total_edges as warpfs graph stats CLI"
-  - "vfs_graph_related(path, imports) returns same edges as warpfs graph related --relation imports"
-  - "MCP server loads graph from same DuckDB file as CLI (no separate instance)"
-  - "MCP server works after graph discover without restart"
+  - vfs_graph_stats returns same total_edges as warpfs graph stats CLI
+  - vfs_graph_related(path, imports) returns same edges as warpfs graph related --relation
+    imports
+  - MCP server loads graph from same DuckDB file as CLI (no separate instance)
+  - MCP server works after graph discover without restart
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
-# ── Tier 2: Integration ──────────────────────────────────────
 - id: integration-full-pipeline
-  title: "Full pipeline — init → tag → discover → mount → query"
+  title: "Full pipeline \u2014 init \u2192 tag \u2192 discover \u2192 mount \u2192\
+    \ query"
   criteria:
-  - "warpfs init creates complete .vfs/ structure with all subdirectories"
-  - "warpfs meta --set works with and without user.vfs. prefix (idempotent)"
-  - "warpfs graph discover produces edges.jsonl with correct (from, to, rel) tuples"
-  - "FUSE mount exposes files with correct content and xattrs"
-  - "warpfs meta on FUSE mount returns correct values (no prefix bugs)"
-  - "getfattr on FUSE mount returns correct values (no prefix bugs)"
-  - "MCP tools query the same graph data visible through CLI and FUSE"
-  - "Full pipeline completes without panics or hangs"
+  - warpfs init creates complete .vfs/ structure with all subdirectories
+  - warpfs meta --set works with and without user.vfs. prefix (idempotent)
+  - warpfs graph discover produces edges.jsonl with correct (from, to, rel) tuples
+  - FUSE mount exposes files with correct content and xattrs
+  - warpfs meta on FUSE mount returns correct values (no prefix bugs)
+  - getfattr on FUSE mount returns correct values (no prefix bugs)
+  - MCP tools query the same graph data visible through CLI and FUSE
+  - Full pipeline completes without panics or hangs
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'
-
 - id: regression-test-coverage
-  title: "Regression test coverage — bugs found must have tests"
+  title: "Regression test coverage \u2014 bugs found must have tests"
   criteria:
-  - "xattr prefix doubling: 10+ tests in warpfs_metadata covering mixed-prefix roundtrip"
-  - "FUSE readdir root children: test validates Path('file').parent() = Some('') case"
-  - "Graph dedup: test validates discover idempotency (same edge count on re-run)"
-  - "DuckDB path: test validates MCP and CLI agree on database file location"
-  - "All tests are in the crate they test (not integration-only) for fast feedback"
+  - 'xattr prefix doubling: 10+ tests in warpfs_metadata covering mixed-prefix roundtrip'
+  - 'FUSE readdir root children: test validates Path(''file'').parent() = Some('''')
+    case'
+  - 'Graph dedup: test validates discover idempotency (same edge count on re-run)'
+  - 'DuckDB path: test validates MCP and CLI agree on database file location'
+  - All tests are in the crate they test (not integration-only) for fast feedback
   status: pending
   created_at: '2026-06-24T03:00:00+00:00'

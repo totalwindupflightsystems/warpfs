@@ -126,5 +126,15 @@ pub fn resolve_path(manifest: &Manifest, virtual_path: &str) -> Option<ResolvedP
         }
     }
 
-    None
+    // Fallback: resolve relative paths against the current working directory.
+    // When no backend matches, treat the path as a local workspace file.
+    let cwd = std::env::current_dir().ok()?;
+    let resolved = cwd.join(virtual_path.trim_start_matches('/'));
+    let exists = resolved.exists();
+    Some(ResolvedPath {
+        real_path: resolved.to_string_lossy().to_string(),
+        backend: "local".to_string(),
+        cached: exists,
+        sync_status: if exists { "synced".to_string() } else { "not found on disk".to_string() },
+    })
 }

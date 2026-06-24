@@ -288,7 +288,7 @@
 - **Notes:** Discovered during fd project testing: 127 edges → 254 after second run. `append_edges_deduped` exists in inventory.rs but may not be wired correctly in the discover pipeline, or the DuckDB load path doesn't deduplicate.
 - **Result:** Implemented directly by foreman (deepseek-v4-pro, 2-file mechanical fix). Root cause: JSONL path used `append_edges_deduped` but DuckDB path used `INSERT INTO` with no unique constraint. Fix: added `CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_unique ON edges("from", "to", rel)` to `init_schema()`, changed `INSERT INTO` → `INSERT OR IGNORE INTO` in `insert_edges()`. Added `test_graph_insert_dedup` (3 scenarios: full-duplicate second insert, mix of old+new). Full workspace 238+ tests pass. Guard PASS.
 
-## [ ] Phase 5: Implement reverse graph queries — `imported_by`, `tested_by`, `tests`
+## [x] Phase 5: Implement reverse graph queries — `imported_by`, `tested_by`, `tests`
 - **Priority:** medium
 - **Model:** deepseek-v4-flash
 - **Files:** warpfs-graph/src/graph.rs, warpfs-cli/src/commands/graph.rs, warpfs-mcp/src/tools/mod.rs
@@ -297,6 +297,7 @@
 - **AC:** `warpfs graph related src/login.go --relation tested_by` returns src/login_test.go
 - **AC:** `GraphDB::related()` accepts optional relation filter and direction parameter
 - **Notes:** Currently only forward queries work (WHERE from = ?). Reverse queries need WHERE to = ? with rel filter. Cross-language edge types (tested_by, tests) were implemented in discover but never wired to graph queries.
+- **Result:** Implemented directly by foreman (deepseek-v4-pro, model differs from deepseek-v4-flash but 3-file modification = direct write). warpfs-graph: added Direction enum (Forward/Reverse) with parse(), updated GraphDB::related() to accept direction parameter, exported Direction from lib.rs. warpfs-cli: added --direction flag to RelatedArgs, updated run_related() to pass direction. warpfs-mcp: replaced best-effort group_by_dependency() hack with db.related() using proper relation+direction params, updated vfs_graph_related inputSchema. Updated edges_test.rs call site. Full workspace 236/236 pass. Guard PASS.
 
 ## Verification (Rust — every task)
 

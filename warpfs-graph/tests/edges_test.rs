@@ -1,7 +1,7 @@
 //! Integration tests for external cross-repo graph edges and impact analysis.
 
 use warpfs_graph::edges;
-use warpfs_graph::graph::GraphDB;
+use warpfs_graph::graph::{Direction, GraphDB};
 use warpfs_graph::impact::compute_impact_with_external;
 use warpfs_metadata::inventory::Edge;
 
@@ -29,7 +29,7 @@ fn test_external_edge_detection_in_graph() {
     .unwrap();
 
     // `related` should return both local and external edges.
-    let results = db.related("auth-service/src/handler.go", None).unwrap();
+    let results = db.related("auth-service/src/handler.go", None, Direction::Forward).unwrap();
     assert_eq!(results.len(), 2);
 
     // External edge should have the external: prefix.
