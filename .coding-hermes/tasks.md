@@ -255,6 +255,37 @@
 - **Notes:** 484 lines source with only 61 lines of tests (mostly debounce). Pure helper functions are untested: mask_to_event_type, event_type_string, matches_pattern, log_trigger_action. Also test the match-and-filter logic (pattern match + event-type gate) without running the full event loop.
 - **Result:** Implemented directly by foreman (deepseek-v4-pro, model match). engine.rs +197 lines: 20 inline unit tests (mask_to_event_type ×6, event_type_string ×3, matches_pattern ×5, log_trigger_action ×3, match-and-filter ×3). lib.rs: +Debug derive on EventType (needed by assert_eq!). trigger_test.rs: removed 2 broken matches_pattern tests that created TriggerEngine but never called matches_pattern. Full workspace 164+ tests pass. Guard PASS. warpfs-triggers: 26 tests (20 inline + 6 integration).
 
+## [ ] Phase 5: Fix xattr prefix doubling — `--set` should strip `user.vfs.` if present
+- **Priority:** high
+- **Model:** deepseek-v4-flash
+- **Files:** warpfs-cli/src/commands/meta.rs, warpfs-metadata/src/xattr.rs
+- **AC:** `warpfs meta --set user.vfs.feature` stores as `user.vfs.feature` not `user.vfs.user.vfs.feature`
+- **AC:** `warpfs meta --set feature` stores as `user.vfs.feature` (no prefix) — existing behavior preserved
+- **AC:** `getfattr -n user.vfs.feature` on local file returns value (no doubling needed)
+- **AC:** `warpfs meta /fuse/mount/file` returns correct value (no triple-prefix)
+- **AC:** Existing tests pass; xattr roundtrip test updated for single-prefix storage
+- **Notes:** Root cause: CLI passes raw `--set` value to `set_vfs_xattr()` which unconditionally prepends `user.vfs.`. If the user passes `user.vfs.feature`, the stored name becomes `user.vfs.user.vfs.feature`. Fix: strip `user.vfs.` prefix from --set value if present before calling set_vfs_xattr, OR make set_vfs_xattr idempotent.
+- **Found during:** Integration testing on sharkdp/fd project. FUSE+getfattr works by accidental double-prefix match. CLI through FUSE fails with triple-prefix.
+
+## [ ] Phase 5: Fix DuckDB path — graph.db vs graph.duckdb mismatch
+- **Priority:** medium
+- **Model:** deepseek-v4-flash
+- **Files:** warpfs-graph/src/graph.rs, warpfs-mcp/src/tools/mod.rs
+- **AC:** `graph discover` writes to `.vfs/graph/graph.duckdb` (matches MCP expectation)
+- **AC:** MCP `vfs_graph_stats` works after `graph discover` without manual symlink
+- **AC:** Constant `GRAPH_DB_PATH` used consistently across graph and MCP crates
+- **Notes:** `GraphDB::open` doc says `.duckdb` but code opens `.db`. MCP constant says `.duckdb` but file is `.db`. Pick one and make both crates agree. Prefer `.db` since DuckDB auto-detects format.
+
+## [ ] Phase 5: Implement reverse graph queries — `imported_by`, `tested_by`, `tests`
+- **Priority:** medium
+- **Model:** deepseek-v4-flash
+- **Files:** warpfs-graph/src/graph.rs, warpfs-cli/src/commands/graph.rs, warpfs-mcp/src/tools/mod.rs
+- **AC:** `warpfs graph related pkg:serde --relation imported_by` returns files that import serde
+- **AC:** `warpfs graph related src/login_test.go --relation tests` returns src/login.go
+- **AC:** `warpfs graph related src/login.go --relation tested_by` returns src/login_test.go
+- **AC:** `GraphDB::related()` accepts optional relation filter and direction parameter
+- **Notes:** Currently only forward queries work (WHERE from = ?). Reverse queries need WHERE to = ? with rel filter. Cross-language edge types (tested_by, tests) were implemented in discover but never wired to graph queries.
+
 ## Verification (Rust — every task)
 
 ```bash
