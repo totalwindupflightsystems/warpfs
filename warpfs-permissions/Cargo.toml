@@ -2,6 +2,8 @@
 name = "warpfs_permissions"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/totalwindupflightsystems/warpfs"
 description = "WarpFS permission enforcement — glob-based path matching with mode bits"
 
 [dependencies]

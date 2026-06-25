@@ -2,6 +2,8 @@
 name = "warpfs_plugins"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/totalwindupflightsystems/warpfs"
 description = "WarpFS plugin system — extism wasm runtime, host function registry"
 
 [dependencies]

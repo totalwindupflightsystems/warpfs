@@ -169,6 +169,14 @@
 
 Phase 7: Production — scale, benchmarks, security, bubblewrap, permissions (§19 of spec).
 
+### [x] PH7-006: OSS readiness — LICENSE, README, community files, Cargo metadata
+- **Priority:** high
+- **Model:** deepseek-v4-pro (direct write)
+- **Files:** LICENSE, README.md, CHANGELOG.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, .github/, docs/, Cargo.toml (all crates), .gitignore
+- **AC:** MIT license added, README with install/quickstart/architecture, community health files (contributing, code of conduct, security policy), GitHub PR/issue templates, CI workflow, docs/ with architecture/CLI/graph-engine/getting-started, Cargo metadata (license + repository) on all 9 crates, .gitignore reorganized with standard patterns, aws-oss-mappings.md removed
+- **AC:** `cargo build` clean, `cargo test --workspace` all pass
+- **Result:** Catch-up commit — prior session completed the work. Build clean, full workspace 259+ tests pass.
+
 ### [x] PH7-001: cargo fmt + cargo clippy — code quality baseline
 - **Priority:** high
 - **Model:** deepseek-v4-pro (direct write — mechanical fix)

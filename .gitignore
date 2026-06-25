@@ -1,9 +1,32 @@
+# Rust build artifacts
+target/
+
+# WarpFS local state
+/.vfs/
+
 # GitReins local state
 .gitreins/tasks.yaml
 .gitreins/history/
-
-# Rust build
-target/
-*research*.md
 .gitreins/config.yaml.bak*
-/.vfs/
+
+# Python cache
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Editor / IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Research / scratch files
+*research*.md
+
+# Agent artifacts (not part of the project)
+.coding-hermes/
